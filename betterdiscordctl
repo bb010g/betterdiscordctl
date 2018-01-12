@@ -15,6 +15,7 @@ flavors=('' Canary PTB)
 discord=
 modules=
 bd_repo='https://github.com/rauenzi/BetterDiscordApp'
+bd_repo_branch=stable16
 bd=
 copy_bd=
 global_asar=
@@ -45,6 +46,7 @@ Options:
   -d, --discord=DIRECTORY: Use specified Discord directory (requires --modules)
   -m, --modules=DIRECTORY: Use specified Discord modules directory
   -r, --bd-repo=REPOSITORY: Use specified Git repository for BD installation
+  --bd-repo-branch=BRANCH: Use specified Git branch (default 'stable16')
   -b, --betterdiscord=DIRECTORY: Use specified BetterDiscord directory
   -c, --copy-bd: Copy BetterDiscord directory instead of symlinking
   --global-asar: Use PATH's asar instead of a local installation
@@ -109,17 +111,27 @@ while :; do
       else die_non_empty '--modules'; fi
       ;;
     --modules=?*)
-      discord_modules=${1#*=}
+      modules=${1#*=}
       ;;
     --modules=)
       die_non_empty '--modules'
+      ;;
+    --bd-repo-branch)
+      if [ "$2" ]; then bd_repo_branch=$2; shift
+      else die_non_empty '--bd-repo-branch'; fi
+      ;;
+    --bd-repo-branch=?*)
+      bd_repo_branch=${1#*=}
+      ;;
+    --bd-repo=)
+      die_non_empty '--bd-repo-branch'
       ;;
     -r|--bd-repo)
       if [ "$2" ]; then bd_repo=$2; shift
       else die_non_empty '--bd-repo'; fi
       ;;
     --bd-repo=?*)
-      bd=${1#*=}
+      bd_repo=${1#*=}
       ;;
     --bd-repo=)
       die_non_empty '--bd-repo'
@@ -163,13 +175,13 @@ if [ -z "$discord" ]; then
       for discord in "$scan/discord${flavor,,}" "$scan/discord-${flavor,,}" "$scan/Discord$flavor" "$scan/Discord-$flavor"; do
         verbose 2 "VV: Checking $discord"
         if [ -d "$discord" ] ; then
-          verbose 2 "VV: Detected ${discord}"
+          verbose 2 "VV: Detected $discord"
           tmp_config="$xdg_config/discord${flavor,,}"
           if [ ! -d "$tmp_config" ]; then
             verbose 1 "V: Config directory not found for $flavor ($discord, $tmp_config)."
             continue 3
           fi
-          verbose 1 "V: Using Discord at ${discord}"
+          verbose 1 "V: Using Discord at $discord"
           if [ -z "$modules" ]; then
             modules=("$tmp_config/"+([0-9]).+([0-9]).+([0-9])"/modules")
             if ((! ${#modules[@]})); then
@@ -201,7 +213,7 @@ else
     'ERROR: Discord modules directory not found.'
   fi
 fi
-core="${modules}/discord_desktop_core"
+core="$modules/discord_desktop_core"
 
 # Commands
 
@@ -218,11 +230,11 @@ bdc_status() {
     if [ -h "$core/core/node_modules/betterdiscord" ]; then
       linked_dir="$(readlink "$core/core/node_modules/betterdiscord")"
       if [ -d "$core/core/node_modules/betterdiscord" ]; then
-        pushd "$core/core/node_modules/betterdiscord" > /dev/null
+        pushd "$core/core/node_modules/betterdiscord" >/dev/null
         linked_repo="$(git remote get-url origin 2>/dev/null || printf 'no\n')"
-        popd > /dev/null
+        popd >/dev/null
       else
-        linked_dir='broken link'
+        linked_dir="(broken link) $linked_dir"
       fi
     fi
   fi
@@ -237,61 +249,61 @@ Linked core repository: %s\n' \
 }
 
 bdc_install() {
-  if [ -d "${core}/core" ]; then
-    printf 'Already installed.\n'
+  if [ -d "$core/core" ]; then
+    printf 'Already installed.\n' >&2
     exit 1
   fi
 
   bd_patch
 
   if [ ! "$bd" ]; then
-    printf 'Cloning %s...' "$bd_repo"
+    printf 'Cloning %s...\n' "$bd_repo" >&2
     bd="$data/bd"
-    git clone "$bd_repo" "$bd"
+    git clone "$bd_repo" -b stable16 --single-branch "$bd"
   fi
 
   if [ "$copy_bd" ]; then
     verbose 1 'V: Copying core loader...'
-    cp -r "$bd" "$discord_core/core/node_modules/betterdiscord"
+    cp -r "$bd" "$core/core/node_modules/betterdiscord"
   else
     verbose 1 'V: Linking core loader...'
     ln -s "$bd" "$core/core/node_modules/betterdiscord"
   fi
 
-  printf 'Installed.\n'
+  printf 'Installed.\n' >&2
 }
 
 bdc_update() {
-  if [ ! -d "${discord_core}/core" ]; then
-    printf 'Not installed.\n'
+  if [ ! -d "$core/core" ]; then
+    printf 'Not installed.\n' >&2
     exit 1
   fi
 
-  pushd "$core/core/node_modules/betterdiscord" > /dev/null
+  pushd "$core/core/node_modules/betterdiscord" >/dev/null
   if git rev-parse --is-inside-work-tree > /dev/null 2>/dev/null; then
-    printf 'Updating Git repository...'
-    git fetch -p origin
-    git reset --hard origin/stable16
+    printf 'Updating Git repository...\n' >&2
+    git fetch origin
+    git reset --hard "origin/$bd_repo_branch"
   else
-    printf 'No Git repository found.'
+    printf 'No Git repository found.\n' >&2
   fi
-  popd > /dev/null
+  popd >/dev/null
 }
 
 bdc_uninstall() {
-  if [ ! -d "${discord_core}/core" ]; then
-    printf 'Not installed.\n'
+  if [ ! -e "$core/core" ]; then
+    printf 'Not installed.\n' >&2
     exit 1
   fi
 
-  printf "Killing Discord...\n"
-  killall -SIGKILL Discord
+  printf "Killing Discord...\n" >&2
+  killall -SIGKILL -qwr '^[dD]iscord'
 
   bd_unpatch
 
-  rm -r "$data/bd" 2>/dev/null
+  rm -rf "$data/bd" 2>/dev/null
 
-  printf 'Uninstalled.\n'
+  printf 'Uninstalled.\n' >&2
 }
 
 # Implementation functions
@@ -301,16 +313,16 @@ bdc_asar() {
     asar "$@"
   else
     if mkdir "$data/asar" 2>/dev/null; then
-      pushd "$data/asar"
+      pushd "$data/asar" >/dev/null
       printf '{"devDependencies":{"asar": "*"}}\n' > package.json
-      printf 'Installing asar...' >&2
+      printf 'Installing asar...\n' >&2
       npm install
     else
-      pushd "$data/asar"
-      printf 'Updating asar...' >&2
+      pushd "$data/asar" >/dev/null
+      printf 'Updating asar...\n' >&2
       npm update
     fi
-    popd 2>/dev/null
+    popd >/dev/null
     "$data/asar/node_modules/asar/bin/asar.js" "$@"
   fi
 }
@@ -324,13 +336,13 @@ bd_patch() {
   sed \
     -e "/var *_url *=/ a var _betterDiscord = require('betterdiscord'); var _betterDiscord2;" \
     -e "/mainWindow *= *new/ a _betterDiscord2 = new _betterDiscord.BetterDiscord(mainWindow);" \
-    -i "$discord_core/core/app/mainScreen.js"
+    -i "$core/core/app/mainScreen.js"
 }
 
 bd_unpatch() {
   verbose 1 "V: Removing core folder from modules..."
-  sed "s/core'/core.asar'/g" -i "${discord_core}/index.js"
-  rm -rf "${discord_core}/core"
+  sed "s/core'/core.asar'/g" -i "$core/index.js"
+  rm -rf "$core/core"
 }
 
 # Run command
