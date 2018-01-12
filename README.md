@@ -53,7 +53,7 @@ Changes the directory scanned for Discord installations.
 ### `-f` / `--flavors` (default `,Canary,PTB`)
 
 When scanning, looks for installations with the given suffixes (both hyphenated
-and unhyphenated).
+and unhyphenated). Stable is `''`, as it has no suffix.
 
 ### `-d` / `--discord` (requires `--modules`)
 

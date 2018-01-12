@@ -180,8 +180,8 @@ if [ -z "$discord" ]; then
           verbose 2 "VV: Detected $discord" >&2
           tmp_config="$xdg_config/discord${flavor,,}"
           if [ ! -d "$tmp_config" ]; then
-            verbose 1 "V: Config directory not found for $flavor ($discord, $tmp_config)." >&2
-            continue 3
+            printf "WARN: Config directory not found for %s (%s, %s).\n" "$flavor" "$discord" "$tmp_config" >&2
+            continue 2
           fi
           verbose 1 "V: Using Discord at $discord" >&2
           if [ -z "$modules" ]; then
@@ -274,7 +274,7 @@ bdc_install() {
     ln -s "$bd" "$core/core/node_modules/betterdiscord"
   fi
 
-  printf 'Installed.\n' >&2
+  printf 'Installed. (Restart Discord if necessary.)\n' >&2
 }
 
 bdc_update() {
@@ -283,6 +283,13 @@ bdc_update() {
     exit 1
   fi
 
+  if [ ! -d "$core/core/node_modules/betterdiscord" ]; then
+    if [ -h "$core/core/node_modules/betterdiscord" ]; then
+      die 'ERROR: Core BetterDiscord symbolic link is broken.'
+    else
+      die 'ERROR: Core BetterDiscord location is not a directory.'
+    fi
+  fi
   pushd "$core/core/node_modules/betterdiscord" >/dev/null
   if git rev-parse --is-inside-work-tree > /dev/null 2>/dev/null; then
     printf 'Updating Git repository...\n' >&2
