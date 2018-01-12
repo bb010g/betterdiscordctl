@@ -1,0 +1,354 @@
+#!/bin/bash
+
+shopt -s nullglob dotglob extglob
+
+die() {
+  printf '%s\n' "$1" >&2
+  exit 1
+}
+
+# Options
+cmd=status
+verbosity=0
+scan=/opt
+flavors=('' Canary PTB)
+discord=
+modules=
+bd_repo='https://github.com/rauenzi/BetterDiscordApp'
+bd=
+copy_bd=
+global_asar=
+
+# Variables
+flavor=
+core=
+xdg_config="${XDG_CONFIG_DIR:-$HOME/.config}"
+data="${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl"
+
+verbose() {
+  if (( verbosity >= $1 )); then
+    shift
+    printf '%s\n' "$1"
+  fi
+}
+
+show_help() {
+  printf 'Usage: %s [OPTION...] [COMMAND]\n\n' "${0##*/}"
+  cat << EOF
+Options:
+  -h, --help: Show this help
+  -v, --verbose: Increase verbosity
+  -s, --scan=DIRECTORY: Directory to scan for Discord installations
+                        (default '/opt')
+  -f, --flavors=FLAVORS: Comma-separated list of Discord flavors
+                         (default ',Canary,PTB')
+  -d, --discord=DIRECTORY: Use specified Discord directory (requires --modules)
+  -m, --modules=DIRECTORY: Use specified Discord modules directory
+  -r, --bd-repo=REPOSITORY: Use specified Git repository for BD installation
+  -b, --betterdiscord=DIRECTORY: Use specified BetterDiscord directory
+  -c, --copy-bd: Copy BetterDiscord directory instead of symlinking
+  --global-asar: Use PATH's asar instead of a local installation
+
+Commands:
+  status (default): Show information about the current Discord patch state.
+  install: Install BetterDiscord.
+  update: Update BetterDiscord.
+  uninstall: Uninstall BetterDiscord.
+EOF
+}
+
+die_non_empty() {
+  die "ERROR: \"$1\" requires a non-empty option argument."
+}
+
+while :; do
+  case $1 in
+    status|install|update|uninstall)
+      cmd=$1
+      ;;
+    -h|-\?|--help)
+      show_help; exit
+      ;;
+    -v|--verbose)
+      verbosity=$((verbosity + 1))
+      ;;
+    -s|--scan)
+      if [ "$2" ]; then scan=$2; shift
+      else die_non_empty '--scan'; fi
+      ;;
+    --scan=?*)
+      scan=${1#*=}
+      ;;
+    --scan=)
+      die_non_empty '--scan'
+      ;;
+    -f|--flavors)
+      if [ "$2" ]; then
+        readarray -td, flavors <<<"$2,"; unset 'flavors[-1]'
+        shift
+      else die_non_empty '--flavors'; fi
+      ;;
+    --flavors=?*)
+      readarray -td, flavors <<<"${1#*=},"; unset 'flavors[-1]'
+      ;;
+    --flavors=)
+      die_non_empty '--flavors'
+      ;;
+    -d|--discord)
+      if [ "$2" ]; then discord=$2; shift
+      else die_non_empty '--discord'; fi
+      ;;
+    --discord=?*)
+      discord=${1#*=}
+      ;;
+    --discord=)
+      die_non_empty '--discord'
+      ;;
+    -m|--modules)
+      if [ "$2" ]; then modules=$2; shift
+      else die_non_empty '--modules'; fi
+      ;;
+    --modules=?*)
+      discord_modules=${1#*=}
+      ;;
+    --modules=)
+      die_non_empty '--modules'
+      ;;
+    -r|--bd-repo)
+      if [ "$2" ]; then bd_repo=$2; shift
+      else die_non_empty '--bd-repo'; fi
+      ;;
+    --bd-repo=?*)
+      bd=${1#*=}
+      ;;
+    --bd-repo=)
+      die_non_empty '--bd-repo'
+      ;;
+    -b|--betterdiscord)
+      if [ "$2" ]; then bd=$2; shift
+      else die_non_empty '--betterdiscord'; fi
+      ;;
+    --betterdiscord=?*)
+      bd=${1#*=}
+      ;;
+    --betterdiscord=)
+      die_non_empty '--betterdiscord'
+      ;;
+    -c|--copy-bd)
+      copy_bd=yes
+      ;;
+    --global-asar)
+      global_asar=yes
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -?*)
+      printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+      ;;
+    *)
+      break
+  esac
+
+  shift
+done
+
+[ ! -d "$data" ] && mkdir -p "$data"
+
+if [ -z "$discord" ]; then
+  while true; do
+    for flavor in "${flavors[@]}"; do
+      verbose 2 "VV: Trying flavor '$flavor'"
+      for discord in "$scan/discord${flavor,,}" "$scan/discord-${flavor,,}" "$scan/Discord$flavor" "$scan/Discord-$flavor"; do
+        verbose 2 "VV: Checking $discord"
+        if [ -d "$discord" ] ; then
+          verbose 2 "VV: Detected ${discord}"
+          tmp_config="$xdg_config/discord${flavor,,}"
+          if [ ! -d "$tmp_config" ]; then
+            verbose 1 "V: Config directory not found for $flavor ($discord, $tmp_config)."
+            continue 3
+          fi
+          verbose 1 "V: Using Discord at ${discord}"
+          if [ -z "$modules" ]; then
+            modules=("$tmp_config/"+([0-9]).+([0-9]).+([0-9])"/modules")
+            if ((! ${#modules[@]})); then
+              die 'ERROR: Discord modules directory not found.'
+            fi
+            modules="${modules[0]}"
+          else
+            # --modules
+            if [ ! -d "$modules" ]; then
+              die 'ERROR: Discord modules directory not found.'
+            fi
+          fi
+          break 3
+        fi
+      done
+    done
+    die 'ERROR: Discord installation not found.'
+    break
+  done
+else
+  # --discord and --modules 
+  if [ -z "$modules" ]; then
+    die 'ERROR: "--discord" requires "--modules" to also be set.'
+  fi
+  if [ ! -d "$discord" ]; then
+    'ERROR: Discord installation not found.'
+  fi
+  if [ ! -d "$modules" ]; then
+    'ERROR: Discord modules directory not found.'
+  fi
+fi
+core="${modules}/discord_desktop_core"
+
+# Commands
+
+bdc_status() {
+  app_patched=no
+  core_patched=no
+  linked_dir=no
+  linked_repo=no
+  if [ -d "$discord/resources/app" ]; then
+    app_patched=yes
+  fi
+  if [ -d "$core/core" ]; then
+    core_patched=yes
+    if [ -h "$core/core/node_modules/betterdiscord" ]; then
+      linked_dir="$(readlink "$core/core/node_modules/betterdiscord")"
+      if [ -d "$core/core/node_modules/betterdiscord" ]; then
+        pushd "$core/core/node_modules/betterdiscord" > /dev/null
+        linked_repo="$(git remote get-url origin 2>/dev/null || printf 'no\n')"
+        popd > /dev/null
+      else
+        linked_dir='broken link'
+      fi
+    fi
+  fi
+
+  printf 'Discord: %s
+Modules: %s
+App patched: %s
+Core patched: %s
+Linked core directory: %s
+Linked core repository: %s\n' \
+    "$discord" "$modules" "$app_patched" "$core_patched" "$linked_dir" "$linked_repo"
+}
+
+bdc_install() {
+  if [ -d "${core}/core" ]; then
+    printf 'Already installed.\n'
+    exit 1
+  fi
+
+  bd_patch
+
+  if [ ! "$bd" ]; then
+    printf 'Cloning %s...' "$bd_repo"
+    bd="$data/bd"
+    git clone "$bd_repo" "$bd"
+  fi
+
+  if [ "$copy_bd" ]; then
+    verbose 1 'V: Copying core loader...'
+    cp -r "$bd" "$discord_core/core/node_modules/betterdiscord"
+  else
+    verbose 1 'V: Linking core loader...'
+    ln -s "$bd" "$core/core/node_modules/betterdiscord"
+  fi
+
+  printf 'Installed.\n'
+}
+
+bdc_update() {
+  if [ ! -d "${discord_core}/core" ]; then
+    printf 'Not installed.\n'
+    exit 1
+  fi
+
+  pushd "$core/core/node_modules/betterdiscord" > /dev/null
+  if git rev-parse --is-inside-work-tree > /dev/null 2>/dev/null; then
+    printf 'Updating Git repository...'
+    git fetch -p origin
+    git reset --hard origin/stable16
+  else
+    printf 'No Git repository found.'
+  fi
+  popd > /dev/null
+}
+
+bdc_uninstall() {
+  if [ ! -d "${discord_core}/core" ]; then
+    printf 'Not installed.\n'
+    exit 1
+  fi
+
+  printf "Killing Discord...\n"
+  killall -SIGKILL Discord
+
+  bd_unpatch
+
+  rm -r "$data/bd" 2>/dev/null
+
+  printf 'Uninstalled.\n'
+}
+
+# Implementation functions
+
+bdc_asar() {
+  if [ "$global_asar" ]; then
+    asar "$@"
+  else
+    if mkdir "$data/asar" 2>/dev/null; then
+      pushd "$data/asar"
+      printf '{"devDependencies":{"asar": "*"}}\n' > package.json
+      printf 'Installing asar...' >&2
+      npm install
+    else
+      pushd "$data/asar"
+      printf 'Updating asar...' >&2
+      npm update
+    fi
+    popd 2>/dev/null
+    "$data/asar/node_modules/asar/bin/asar.js" "$@"
+  fi
+}
+
+bd_patch() {
+  verbose 1 'V: Unpacking core asar...'
+  bdc_asar e "$core/core.asar" "$core/core"
+  sed "s/core\.asar'/core'/g" -i "$core/index.js"
+
+  verbose 1 'V: Patching core entry...'
+  sed \
+    -e "/var *_url *=/ a var _betterDiscord = require('betterdiscord'); var _betterDiscord2;" \
+    -e "/mainWindow *= *new/ a _betterDiscord2 = new _betterDiscord.BetterDiscord(mainWindow);" \
+    -i "$discord_core/core/app/mainScreen.js"
+}
+
+bd_unpatch() {
+  verbose 1 "V: Removing core folder from modules..."
+  sed "s/core'/core.asar'/g" -i "${discord_core}/index.js"
+  rm -rf "${discord_core}/core"
+}
+
+# Run command
+
+case "$cmd" in
+  status)
+    bdc_status
+    ;;
+  install)
+    bdc_install
+    ;;
+  update)
+    bdc_update
+    ;;
+  uninstall)
+    bdc_uninstall
+    ;;
+  *)
+    die "ERROR: Unknown command: $cmd"
+    ;;
+esac
