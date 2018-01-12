@@ -72,7 +72,7 @@ while :; do
       show_help; exit
       ;;
     -v|--verbose)
-      verbosity=$((verbosity + 1))
+      ((++verbosity))
       ;;
     -s|--scan)
       if [ "$2" ]; then scan=$2; shift
@@ -123,7 +123,7 @@ while :; do
     --bd-repo-branch=?*)
       bd_repo_branch=${1#*=}
       ;;
-    --bd-repo=)
+    --bd-repo-branch=)
       die_non_empty '--bd-repo-branch'
       ;;
     -r|--bd-repo)
@@ -172,7 +172,8 @@ if [ -z "$discord" ]; then
   while true; do
     for flavor in "${flavors[@]}"; do
       verbose 2 "VV: Trying flavor '$flavor'"
-      for discord in "$scan/discord${flavor,,}" "$scan/discord-${flavor,,}" "$scan/Discord$flavor" "$scan/Discord-$flavor"; do
+      for discord in "$scan/discord${flavor,,}" "$scan/discord-${flavor,,}" \
+                     "$scan/Discord$flavor" "$scan/Discord-$flavor"; do
         verbose 2 "VV: Checking $discord"
         if [ -d "$discord" ] ; then
           verbose 2 "VV: Detected $discord"
