@@ -1,9 +1,18 @@
 # betterdiscordctl
 
-A utility for managing BetterDiscord on Linux. Requires NodeJS and Git to be installed.
+A utility for managing BetterDiscord on Linux.
 
 To completely remove `betterdiscordctl`'s local data, delete
 `$XDG_DATA_HOME/betterdiscordctl`.
+
+## Dependencies
+
+Requires `nodejs`, `npm`, and `git`. If you don't have `nodejs` and `npm` in
+your distro's [package manager][node-packages], you can
+[download it][node-download].
+
+[node-packages]: https://nodejs.org/en/download/package-manager/
+[node-download]: https://nodejs.org/en/download/
 
 ## Commands
 
@@ -59,6 +68,10 @@ inside Discord's user-specific storage directory).
 
 When initially installing BetterDiscord, use the specified Git repository. Does
 _not_ affect updates. Defaults to Zerebos's BandagedBD fork.
+
+### `--bd-repo-branch` (default `stable16`)
+
+When downloading from `--bd-repo`, use this branch.
 
 ### `-b` / `--betterdiscord`
 
