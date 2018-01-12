@@ -167,22 +167,23 @@ while :; do
 done
 
 [ ! -d "$data" ] && mkdir -p "$data"
+[ ! -f "$data/bd_map" ] && touch "$data/bd_map"
 
 if [ -z "$discord" ]; then
   while true; do
     for flavor in "${flavors[@]}"; do
-      verbose 2 "VV: Trying flavor '$flavor'"
+      verbose 2 "VV: Trying flavor '$flavor'" >&2
       for discord in "$scan/discord${flavor,,}" "$scan/discord-${flavor,,}" \
                      "$scan/Discord$flavor" "$scan/Discord-$flavor"; do
-        verbose 2 "VV: Checking $discord"
+        verbose 2 "VV: Checking $discord" >&2
         if [ -d "$discord" ] ; then
-          verbose 2 "VV: Detected $discord"
+          verbose 2 "VV: Detected $discord" >&2
           tmp_config="$xdg_config/discord${flavor,,}"
           if [ ! -d "$tmp_config" ]; then
-            verbose 1 "V: Config directory not found for $flavor ($discord, $tmp_config)."
+            verbose 1 "V: Config directory not found for $flavor ($discord, $tmp_config)." >&2
             continue 3
           fi
-          verbose 1 "V: Using Discord at $discord"
+          verbose 1 "V: Using Discord at $discord" >&2
           if [ -z "$modules" ]; then
             modules=("$tmp_config/"+([0-9]).+([0-9]).+([0-9])"/modules")
             if ((! ${#modules[@]})); then
@@ -259,15 +260,17 @@ bdc_install() {
 
   if [ ! "$bd" ]; then
     printf 'Cloning %s...\n' "$bd_repo" >&2
-    bd="$data/bd"
-    git clone "$bd_repo" -b stable16 --single-branch "$bd"
+    bd="$data/bd/$(bd_map_add "$discord" "$bd_repo")"
+    if [ ! -d "$bd" ]; then
+      git clone "$bd_repo" -b stable16 --single-branch "$bd"
+    fi
   fi
 
   if [ "$copy_bd" ]; then
-    verbose 1 'V: Copying core loader...'
+    verbose 1 'V: Copying core loader...' >&2
     cp -r "$bd" "$core/core/node_modules/betterdiscord"
   else
-    verbose 1 'V: Linking core loader...'
+    verbose 1 'V: Linking core loader...' >&2
     ln -s "$bd" "$core/core/node_modules/betterdiscord"
   fi
 
@@ -302,7 +305,11 @@ bdc_uninstall() {
 
   bd_unpatch
 
-  rm -rf "$data/bd" 2>/dev/null
+  bd_n=$(bd_map_get_dir "$discord" | bd_map_entry_n)
+  bd_map_remove "$discord"
+  if [ -z "$(bd_map_get_n $bd_n)" ]; then
+    rm -rf "$data/bd/$bd_n" 2>/dev/null
+  fi
 
   printf 'Uninstalled.\n' >&2
 }
@@ -329,11 +336,11 @@ bdc_asar() {
 }
 
 bd_patch() {
-  verbose 1 'V: Unpacking core asar...'
+  verbose 1 'V: Unpacking core asar...' >&2
   bdc_asar e "$core/core.asar" "$core/core"
   sed "s/core\.asar'/core'/g" -i "$core/index.js"
 
-  verbose 1 'V: Patching core entry...'
+  verbose 1 'V: Patching core entry...' >&2
   sed \
     -e "/var *_url *=/ a var _betterDiscord = require('betterdiscord'); var _betterDiscord2;" \
     -e "/mainWindow *= *new/ a _betterDiscord2 = new _betterDiscord.BetterDiscord(mainWindow);" \
@@ -341,9 +348,46 @@ bd_patch() {
 }
 
 bd_unpatch() {
-  verbose 1 "V: Removing core folder from modules..."
+  verbose 1 "V: Removing core folder from modules..." >&2
   sed "s/core'/core.asar'/g" -i "$core/index.js"
   rm -rf "$core/core"
+}
+
+bd_map_entry_n() {
+  sed 's/^.*\t\t.*\t\(.*\)$/\1/' "$@"
+}
+
+bd_map_fresh() {
+  verbose 1 "V: Generating fresh bd_map number..." >&2
+  bd_map_entry_n "$data/bd_map" | sort | awk 'BEGIN {max=-1} NF != 0 {if ($1>max+1) {exit}; max=$1} END {print max+1}'
+}
+
+bd_map_add() {
+  entry="$(bd_map_get_repo "$2")"
+  if [ "$entry" ]; then
+    num=$(head -n1 <<< "$entry" | bd_map_entry_n)
+  else
+    num=$(bd_map_fresh)
+  fi
+  printf '%s\t\t%s\t%s\n' "$1" "$2" $num >> "$data/bd_map"
+  printf '%s\n' $num
+}
+
+bd_map_get_dir() {
+  grep -F "$1"$'\t\t' "$data/bd_map"
+}
+
+bd_map_get_repo() {
+  grep -F $'\t\t'"$1"$'\t' "$data/bd_map"
+}
+
+bd_map_get_n() {
+  grep $'\t'"$1\$" "$data/bd_map"
+}
+
+bd_map_remove() {
+  grep -vF "$1"$'\t\t' "$data/bd_map" > "$data/bd_map.temp"
+  mv "$data/bd_map.temp" "$data/bd_map"
 }
 
 # Run command
