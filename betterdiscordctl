@@ -63,6 +63,13 @@ die_non_empty() {
   die "ERROR: \"$1\" requires a non-empty option argument."
 }
 
+# Show usage help and exit
+# when no arguments were given
+if [ -z "$1" ]; then
+  show_help >&2
+  exit
+fi
+
 while :; do
   case $1 in
     status|install|update|uninstall)
