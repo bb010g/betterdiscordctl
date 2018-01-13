@@ -86,3 +86,7 @@ Discord's modules.
 ### `--global-asar`
 
 Instead of maintaining a local installation of `asar`, use the one in `PATH`.
+
+### `--version`
+
+Displays the current version.

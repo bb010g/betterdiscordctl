@@ -20,6 +20,7 @@ flavor=
 core=
 xdg_config="${XDG_CONFIG_DIR:-$HOME/.config}"
 data="${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl"
+version=1.01
 
 show_help() {
   printf 'Usage: %s [OPTION...] [COMMAND]\n\n' "${0##*/}"
@@ -38,6 +39,7 @@ Options:
   -b, --betterdiscord=DIRECTORY: Use specified BetterDiscord directory
   -c, --copy-bd: Copy BetterDiscord directory instead of symlinking
   --global-asar: Use PATH's asar instead of a local installation
+  --version: Print version info and exit
 
 Commands:
   status (default): Show information about the current Discord patch state.
@@ -161,6 +163,10 @@ while :; do
       ;;
     --global-asar)
       global_asar=yes
+      ;;
+    --version)
+      printf "betterdiscordctl "$version"\n" >&2
+      exit
       ;;
     --)
       shift
