@@ -2,11 +2,6 @@
 
 shopt -s nullglob dotglob extglob
 
-die() {
-  printf '%s\n' "$1" >&2
-  exit 1
-}
-
 # Options
 cmd=status
 verbosity=0
@@ -25,13 +20,6 @@ flavor=
 core=
 xdg_config="${XDG_CONFIG_DIR:-$HOME/.config}"
 data="${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl"
-
-verbose() {
-  if (( verbosity >= $1 )); then
-    shift
-    printf '%s\n' "$1"
-  fi
-}
 
 show_help() {
   printf 'Usage: %s [OPTION...] [COMMAND]\n\n' "${0##*/}"
@@ -57,6 +45,18 @@ Commands:
   update: Update BetterDiscord.
   uninstall: Uninstall BetterDiscord.
 EOF
+}
+
+verbose() {
+  if (( verbosity >= $1 )); then
+    shift
+    printf '%s\n' "$1"
+  fi
+}
+
+die() {
+  printf '%s\n' "$1" >&2
+  exit 1
 }
 
 die_non_empty() {
@@ -166,8 +166,8 @@ while :; do
   shift
 done
 
-[ ! -d "$data" ] && mkdir -p "$data"
-[ ! -f "$data/bd_map" ] && touch "$data/bd_map"
+mkdir -p "$data"
+touch "$data/bd_map"
 
 if [ -z "$discord" ]; then
   while true; do
@@ -204,7 +204,7 @@ if [ -z "$discord" ]; then
     break
   done
 else
-  # --discord and --modules 
+  # --discord and --modules
   if [ -z "$modules" ]; then
     die 'ERROR: "--discord" requires "--modules" to also be set.'
   fi
@@ -321,7 +321,7 @@ bdc_uninstall() {
 
   # Clean up legacy cruft
   if [ -d "$discord/resources/app" ]; then
-    rm -r "$discord/resources/app"
+    rm -rf "$discord/resources/app"
   fi
 
   printf 'Uninstalled.\n' >&2
