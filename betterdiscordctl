@@ -312,10 +312,16 @@ bdc_uninstall() {
 
   bd_unpatch
 
+  # Remove managed BD repo if applicable
   bd_n=$(bd_map_get_dir "$discord" | bd_map_entry_n)
   bd_map_remove "$discord"
   if [ -z "$(bd_map_get_n $bd_n)" ]; then
-    rm -rf "$data/bd/$bd_n" 2>/dev/null
+    rm -rf "$data/bd/$bd_n"
+  fi
+
+  # Clean up legacy cruft
+  if [ -d "$discord/resources/app" ]; then
+    rm -r "$discord/resources/app"
   fi
 
   printf 'Uninstalled.\n' >&2

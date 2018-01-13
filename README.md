@@ -27,7 +27,7 @@ Installs BetterDiscord, managing what's necessary by default.
 ### `update`
 
 Updates BetterDiscord, updating your local repository if present (`origin`
-branch).
+branch). Also cleans up any old patch methods, if found.
 
 (Advanced users should avoid using this if locally modifying their linked
 repositories, and should instead manually fetch and update.)
