@@ -81,6 +81,9 @@ while :; do
     -v|--verbose)
       ((++verbosity))
       ;;
+    -vv)
+      ((verbosity=2))
+      ;;
     -s|--scan)
       if [ "$2" ]; then scan=$2; shift
       else die_non_empty '--scan'; fi
