@@ -21,6 +21,7 @@ core=
 xdg_config="${XDG_CONFIG_DIR:-$HOME/.config}"
 data="${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl"
 version=1.01
+github_url='https://raw.githubusercontent.com/ObserverOfTime/betterdiscordctl/master/betterdiscordctl'
 
 show_help() {
   printf 'Usage: %s [OPTION...] [COMMAND]\n\n' "${0##*/}"
@@ -64,6 +65,39 @@ die() {
 die_non_empty() {
   die "ERROR: \"$1\" requires a non-empty option argument."
 }
+
+# Offer to self-update
+github_version=$(curl -s "$github_url" | grep "version=" -m1 | cut -d '=' -f2)
+if [ "$github_version" != "$version" ]; then
+  printf "You are using betterdiscordctl version $version.\n" >&2
+  printf "There's an updated version ($github_version) on GitHub.\n" >&2
+  read -p "Would you like to download it? (y/n): " >&2 reply
+  while true; do
+    case "$reply" in
+      [Yy])
+        printf "Downloading betterdiscordctl...\n" >&2
+        curl -o /usr/local/bin/betterdiscordctl "$github_url" --progress-bar
+        if [ $? != 0 ]; then
+          curl -o "$HOME"/betterdiscordctl "$github_url" --progress-bar \
+          && chmod +x "$HOME"/betterdiscordctl
+          printf "Downloaded betterdiscordctl to '$HOME'.\n" >&2
+          printf "Please move it to '/usr/local/bin' before using it.\n" >&2
+          exit 1
+        fi
+        printf "betterdiscordctl has been updated and will now exit.\n" >&2
+        printf "Please run it again in order to use it.\n" >&2
+        exit
+        ;;
+      [Nn])
+        printf "betterdiscordctl will not be updated.\n" >&2
+        break
+        ;;
+      *)
+        read -p "Please type 'y' or 'n': " >&2 reply
+        ;;
+    esac
+  done
+fi
 
 # Show usage help and exit
 # when no arguments were given
