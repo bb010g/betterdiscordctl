@@ -20,33 +20,31 @@ flavor=
 core=
 xdg_config="${XDG_CONFIG_DIR:-$HOME/.config}"
 data="${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl"
-version=1.01
+version=1.02
 github_url='https://raw.githubusercontent.com/ObserverOfTime/betterdiscordctl/master/betterdiscordctl'
 
 show_help() {
   printf 'Usage: %s [OPTION...] [COMMAND]\n\n' "${0##*/}"
   cat << EOF
-Options:
-  -h, --help: Show this help
-  -v, --verbose: Increase verbosity
-  -s, --scan=DIRECTORY: Directory to scan for Discord installations
-                        (default '/opt')
-  -f, --flavors=FLAVORS: Comma-separated list of Discord flavors
-                         (default ',Canary,PTB')
-  -d, --discord=DIRECTORY: Use specified Discord directory (requires --modules)
-  -m, --modules=DIRECTORY: Use specified Discord modules directory
-  -r, --bd-repo=REPOSITORY: Use specified Git repository for BD installation
-  --bd-repo-branch=BRANCH: Use specified Git branch (default 'stable16')
-  -b, --betterdiscord=DIRECTORY: Use specified BetterDiscord directory
-  -c, --copy-bd: Copy BetterDiscord directory instead of symlinking
-  --global-asar: Use PATH's asar instead of a local installation
-  --version: Print version info and exit
-
 Commands:
-  status (default): Show information about the current Discord patch state.
-  install: Install BetterDiscord.
-  update: Update BetterDiscord.
-  uninstall: Uninstall BetterDiscord.
+  status (default)               Show the current Discord patch state.
+  install                        Install BetterDiscord.
+  update                         Update BetterDiscord.
+  uninstall                      Uninstall BetterDiscord.
+
+Options:
+  -h, --help                     Display this help message and exit
+  -v, --verbose                  Increase verbosity
+  -s, --scan=DIRECTORY           Directory to scan for Discord installations (default '/opt')
+  -f, --flavors=FLAVORS          Comma-separated list of Discord flavors (default ',Canary,PTB')
+  -d, --discord=DIRECTORY        Use specified Discord directory (requires --modules)
+  -m, --modules=DIRECTORY        Use specified Discord modules directory
+  -r, --bd-repo=REPOSITORY       Use specified Git repository for BD installation
+      --bd-repo-branch=BRANCH    Use specified Git branch (default 'stable16')
+  -b, --betterdiscord=DIRECTORY  Use specified BetterDiscord directory
+  -c, --copy-bd                  Copy BetterDiscord directory instead of symlinking
+      --global-asar              Use the asar in PATH instead of a local installation
+  -V, --version                  Display version info and exit
 EOF
 }
 
@@ -58,7 +56,7 @@ verbose() {
 }
 
 die() {
-  printf '%s\n' "$1" >&2
+  printf '%s\n%s\n' "$1" 'Use "--help" for more information.' >&2
   exit 1
 }
 
@@ -68,13 +66,13 @@ die_non_empty() {
 
 # Offer to self-update
 github_version=$(curl -s "$github_url" | grep "version=" -m1 | cut -d '=' -f2)
-if [ "$github_version" != "$version" ]; then
+if [[ "$github_version" > "$version" ]]; then
   printf "You are using betterdiscordctl version $version.\n" >&2
   printf "There's an updated version ($github_version) on GitHub.\n" >&2
   read -p "Would you like to download it? (y/n): " >&2 reply
   while true; do
-    case "$reply" in
-      [Yy])
+    case "${reply,,}" in
+      y|yes)
         printf "Downloading betterdiscordctl...\n" >&2
         curl -o /usr/local/bin/betterdiscordctl "$github_url" --progress-bar
         if [ $? != 0 ]; then
@@ -88,8 +86,8 @@ if [ "$github_version" != "$version" ]; then
         printf "Please run it again in order to use it.\n" >&2
         exit
         ;;
-      [Nn])
-        printf "betterdiscordctl will not be updated.\n" >&2
+      n|no)
+        printf "betterdiscordctl will not be updated.\n\n" >&2
         break
         ;;
       *)
@@ -132,12 +130,12 @@ while :; do
       ;;
     -f|--flavors)
       if [ "$2" ]; then
-        readarray -td, flavors <<<"$2,"; unset 'flavors[-1]'
+        readarray -td, flavors <<< "$2,"; unset 'flavors[-1]'
         shift
       else die_non_empty '--flavors'; fi
       ;;
     --flavors=?*)
-      readarray -td, flavors <<<"${1#*=},"; unset 'flavors[-1]'
+      readarray -td, flavors <<< "${1#*=},"; unset 'flavors[-1]'
       ;;
     --flavors=)
       die_non_empty '--flavors'
@@ -198,7 +196,7 @@ while :; do
     --global-asar)
       global_asar=yes
       ;;
-    --version)
+    -V|--version)
       printf "betterdiscordctl "$version"\n" >&2
       exit
       ;;
@@ -216,8 +214,7 @@ while :; do
   shift
 done
 
-mkdir -p "$data"
-touch "$data/bd_map"
+mkdir -p "$data" && touch "$data/bd_map"
 
 if [ -z "$discord" ]; then
   while true; do
@@ -291,13 +288,12 @@ bdc_status() {
     fi
   fi
 
-  printf 'Discord: %s
-Modules: %s
-App patched: %s
-Core patched: %s
-Linked core directory: %s
-Linked core repository: %s\n' \
-    "$discord" "$modules" "$app_patched" "$core_patched" "$linked_dir" "$linked_repo"
+  printf 'Discord: %s\n' "$discord"
+  printf 'Modules: %s\n' "$modules"
+  printf 'App patched: %s\n' "$app_patched"
+  printf 'Core patched: %s\n' "$core_patched"
+  printf 'Linked core directory: %s\n' "$linked_dir"
+  printf 'Linked core repository: %s\n' "$linked_repo"
 }
 
 bdc_install() {
