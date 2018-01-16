@@ -24,7 +24,7 @@ version=1.02
 github_url='https://raw.githubusercontent.com/ObserverOfTime/betterdiscordctl/master/betterdiscordctl'
 
 show_help() {
-  printf 'Usage: %s [OPTION...] [COMMAND]\n\n' "${0##*/}"
+  printf 'Usage: %s [COMMAND] [OPTION...]\n\n' "${0##*/}"
   cat << EOF
 Commands:
   status (default)               Show the current Discord patch state.
