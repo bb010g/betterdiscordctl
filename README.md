@@ -87,6 +87,6 @@ Discord's modules.
 
 Instead of maintaining a local installation of `asar`, use the one in `PATH`.
 
-### `--version`
+### `-V` / `--version`
 
 Displays the current version.
