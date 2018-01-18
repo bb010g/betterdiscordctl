@@ -36,7 +36,7 @@ repositories, and should instead manually fetch and update.)
 
 Uninstalls BetterDiscord, removing the managed repository if used.
 
-## Flags
+## Options
 
 ### `-h` / `--help`
 
