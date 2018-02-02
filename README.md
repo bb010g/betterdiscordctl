@@ -3,7 +3,11 @@
 A utility for managing BetterDiscord on Linux.
 
 To completely remove `betterdiscordctl`'s local data, delete
-`$XDG_DATA_HOME/betterdiscordctl`.
+`$XDG_DATA_HOME/betterdiscordctl` (or ` $HOME/.local/share/betterdiscordctl`).
+
+## Usage
+
+Some simple instructions can be found [here](./USAGE.md).
 
 ## Dependencies
 
