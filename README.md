@@ -91,6 +91,12 @@ Discord's modules.
 
 Instead of maintaining a local installation of `asar`, use the one in `PATH`.
 
+### `--snap`
+
+Needed for `betterdiscordctl` to find the modules directory if you installed Discord
+via snap. Furthemore, it automatically sets `-c` because symlinks don't work.
+
+
 ### `-V` / `--version`
 
 Displays the current version.

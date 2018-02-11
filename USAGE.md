@@ -38,6 +38,8 @@ Replace `[COMMAND]` with `install` to install BD for the first time, `update` to
 
 Replace `[PATH]` with the path to Discord's parent directory. For example, if Discord is installed in `/usr/share/discord`, `[PATH]` should be `/usr/share`.
 
+If you installed Discord via snap you will also need to pass the `--snap` flag.
+
 - For Stable
 
 ```
@@ -56,5 +58,6 @@ $ betterdiscordctl [COMMAND] -s [PATH] -f PTB
 $ betterdiscordctl [COMMAND] -s [PATH] -f Canary
 ````
 
-> After installation, your plugins and themes will be located in `$XDG_CONFIG_HOME/BetterDiscord` (or ` $HOME/.config/BetterDiscord`).
+> After installation, your plugins and themes will be located in `$XDG_CONFIG_HOME/BetterDiscord` (or `$HOME/.config/BetterDiscord`).
+Or, `$HOME/snap/discord/current/.config/BetterDiscord`, if you installed Discord via snap.
 

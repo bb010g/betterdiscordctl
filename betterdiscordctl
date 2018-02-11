@@ -14,13 +14,14 @@ bd_repo_branch=stable16
 bd=
 copy_bd=
 global_asar=
+snap=
 
 # Variables
 flavor=
 core=
 xdg_config="${XDG_CONFIG_DIR:-$HOME/.config}"
 data="${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl"
-version=1.02
+version=1.1.0
 github_url='https://raw.githubusercontent.com/ObserverOfTime/betterdiscordctl/master/betterdiscordctl'
 
 show_help() {
@@ -44,6 +45,7 @@ Options:
   -b, --betterdiscord=DIRECTORY  Use specified BetterDiscord directory
   -c, --copy-bd                  Copy BetterDiscord directory instead of symlinking
       --global-asar              Use the asar in PATH instead of a local installation
+      --snap                     Install to the snap installation of Discord
   -V, --version                  Display version info and exit
 EOF
 }
@@ -189,6 +191,10 @@ while :; do
     --global-asar)
       global_asar=yes
       ;;
+    --snap)
+      snap=yes
+      copy_bd=yes
+      ;;
     -V|--version)
       printf "betterdiscordctl "$version"\n" >&2
       exit
@@ -218,7 +224,11 @@ if [ -z "$discord" ]; then
         verbose 2 "VV: Checking $discord" >&2
         if [ -d "$discord" ] ; then
           verbose 2 "VV: Detected $discord" >&2
-          tmp_config="$xdg_config/discord${flavor,,}"
+          if [ "$snap" ]; then
+            tmp_config="$HOME/snap/discord${flavor,,}/current/.config/discord${flavor,,}"
+          else
+            tmp_config="$xdg_config/discord${flavor,,}"
+          fi
           if [ ! -d "$tmp_config" ]; then
             printf "WARN: Config directory not found for %s (%s, %s).\n" "$flavor" "$discord" "$tmp_config" >&2
             continue 2
