@@ -2,32 +2,33 @@
 
 A utility for managing BetterDiscord on Linux.
 
-## Table of Contents
+## Installation
 
-- [Dependencies](#dependencies)
-- [Options](#options)
-- [Commands](#commands)
-- [Installation](#installation)
-- [Examples](#examples)
-- [Locations](#locations)
+### Packages
 
-## Dependencies
+- Arch: https://aur.archlinux.org/packages/betterdiscordctl-git
 
-### Git
+### Manual
 
-Install using your [package manager][git-packages]
+Requires `git`, `nodejs`, and `npm`. You can install `git` from your distro's [package manager][git-packages]. If you don't have `nodejs` and `npm` in
+your distro's [package manager][node-packages], you can
+[download them][node-download].
 
-[git-packages]: https://git-scm.com/download/linux
+[git-packages]:  https://git-scm.com/download/linux/
+[node-packages]: https://nodejs.org/en/download/package-manager/
+[node-download]: https://nodejs.org/en/download/
 
-### Node & npm
+```
+$ curl -O https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl
+$ chmod +x betterdiscordctl
+$ sudo mv betterdiscordctl /usr/local/bin
+```
 
-Install using your [package manager][node-packages]
+You can then keep `betterdiscordctl` up to date with this command:
 
-Or download a [binary package][node-download]
-
-[node-packages]: https://nodejs.org/en/download/package-manager
-
-[node-download]: https://nodejs.org/en/download
+```
+$ betterdiscordctl upgrade
+```
 
 ## Options
 
@@ -86,7 +87,7 @@ Instead of maintaining a local installation of `asar`, use the one in `PATH`.
 
 ### `--snap`
 
-Needed for `betterdiscordctl` to find the modules directory if Discord was installed via snap. Furthermore, it automatically sets `-c` because symlinks don't work.
+Needed for `betterdiscordctl` to find the modules directory if Discord was installed via Snap. Sets the `-c` flag due to Snaps' restriction to only access their own directories.
 
 ## Commands
 
@@ -114,50 +115,27 @@ Uninstalls BetterDiscord, removing the managed repository if used.
 
 Updates `betterdiscordctl` to the latest version available on GitHub.
 
-## Installation
-
-### Arch
-
-You can install `betterdiscordctl` from [AUR][AUR-package].
-
-[AUR-package]: https://aur.archlinux.org/packages/betterdiscordctl-git
-
-### Other distributions
-
-```
-$ curl -O https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl
-$ chmod +x betterdiscordctl
-$ sudo mv betterdiscordctl /usr/local/bin
-```
-> /usr/local/bin must be in your `PATH` for this to work.
-
-You can then keep `betterdiscordctl` up to date with this command:
-
-```
-$ betterdiscordctl upgrade
-```
-
 ## Examples
 
-### Status (Discord in `/usr/share/discord`)
+- **Status** (Discord in `/usr/share/discord`)
 
 ```
 $ betterdiscordctl status -s /usr/share
 ````
 
-### Install (Discord PTB in `/opt/discord-ptb`)
+- **Install** (Discord PTB in `/opt/discord-ptb`)
 
 ```
 $ betterdiscordctl install -s /opt -f PTB
 ````
 
-### Update (Discord Canary in `/opt/discord-canary`)
+- **Update** (Discord Canary in `/opt/discord-canary`)
 
 ```
 $ betterdiscordctl update -s /opt -f Canary
 ```
 
-### Uninstall (Snap Discord in `/snap/discord/current/usr/share/discord`)
+- **Uninstall** (Snap Discord in `/snap/discord/current/usr/share/discord`)
 
 ```
 $ betterdiscordctl uninstall -s /snap/discord/current/usr/share --snap
@@ -165,16 +143,17 @@ $ betterdiscordctl uninstall -s /snap/discord/current/usr/share --snap
 
 ## Locations
 
+
 ### `betterdiscordctl`'s local data
 
-`$XDG_DATA_HOME/betterdiscordctl` (or ` $HOME/.local/share/betterdiscordctl`)
+`$XDG_DATA_HOME/betterdiscordctl` (or `$HOME/.local/share/betterdiscordctl`)
 
 ### BetterDiscord plugins & themes
 
-#### Stable/PTB/Canary
+- **Stable/PTB/Canary**
 
 `$XDG_CONFIG_HOME/BetterDiscord` (or `$HOME/.config/BetterDiscord`)
 
-#### Snap
+- **Snap**
 
 `$HOME/snap/discord/current/.config/BetterDiscord`

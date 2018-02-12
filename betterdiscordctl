@@ -46,7 +46,7 @@ Options:
   -b, --betterdiscord=DIRECTORY  Use specified BetterDiscord directory
   -c, --copy-bd                  Copy BD directory instead of symlinking
       --global-asar              Use the asar in PATH instead of local
-      --snap                     Install to the snap version of Discord
+      --snap                     Install to the Snap version of Discord
 
 Commands:
   status (default)               Show the current Discord patch state.
