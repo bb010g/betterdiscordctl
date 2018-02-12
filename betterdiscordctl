@@ -239,13 +239,16 @@ if [ "$cmd" != upgrade ]; then
       die_with_help 'ERROR: "--discord" requires "--modules" to also be set.'
     fi
     if [ ! -d "$discord" ]; then
-      'ERROR: Discord installation not found.'
+      die 'ERROR: Discord installation not found.'
     fi
     if [ ! -d "$modules" ]; then
-      'ERROR: Discord modules directory not found.'
+      die 'ERROR: Discord modules directory not found.'
     fi
   fi
   core="$modules/discord_desktop_core"
+  if [ ! -d "$core" ]; then
+    die "ERROR: Directory 'discord_desktop_core' not found in '$(readlink -f $modules)'"
+  fi
 fi
 
 # Commands
