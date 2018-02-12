@@ -349,12 +349,12 @@ bdc_uninstall() {
   bd_n=$(bd_map_get_dir "$discord" | bd_map_entry_n)
   bd_map_remove "$discord"
   if [ -z "$(bd_map_get_n $bd_n)" ]; then
-    rm -r "$data/bd/$bd_n"
+    rm -rf "$data/bd/$bd_n"
   fi
 
   # Clean up legacy cruft
   if [ -d "$discord/resources/app" ]; then
-    rm -rf "$discord/resources/app"
+    rm -r "$discord/resources/app"
   fi
 
   printf 'Uninstalled.\n' >&2
