@@ -18,29 +18,11 @@ your distro's [package manager][node-packages], you can
 [node-packages]: https://nodejs.org/en/download/package-manager/
 [node-download]: https://nodejs.org/en/download/
 
-## Commands
-
-### `status` (default)
-
-Displays information about your current BetterDiscord setup.
-
-### `install`
-
-Installs BetterDiscord, managing what's necessary by default.
-
-### `update`
-
-Updates BetterDiscord, updating your local repository if present (`origin`
-branch). Also cleans up any old patch methods, if found.
-
-(Advanced users should avoid using this if locally modifying their linked
-repositories, and should instead manually fetch and update.)
-
-### `uninstall`
-
-Uninstalls BetterDiscord, removing the managed repository if used.
-
 ## Options
+
+### `-V` / `--version`
+
+Displays the current version.
 
 ### `-h` / `--help`
 
@@ -96,7 +78,28 @@ Instead of maintaining a local installation of `asar`, use the one in `PATH`.
 Needed for `betterdiscordctl` to find the modules directory if you installed Discord
 via snap. Furthermore, it automatically sets `-c` because symlinks don't work.
 
+## Commands
 
-### `-V` / `--version`
+### `status` (default)
 
-Displays the current version.
+Displays information about your current BetterDiscord setup.
+
+### `install`
+
+Installs BetterDiscord, managing what's necessary by default.
+
+### `update`
+
+Updates BetterDiscord, updating your local repository if present (`origin`
+branch). Also cleans up any old patch methods, if found.
+
+(Advanced users should avoid using this if locally modifying their linked
+repositories, and should instead manually fetch and update.)
+
+### `uninstall`
+
+Uninstalls BetterDiscord, removing the managed repository if used.
+
+### `upgrade`
+
+Updates `betterdiscordctl` to the latest version available on GitHub.

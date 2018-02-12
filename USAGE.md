@@ -61,3 +61,10 @@ $ betterdiscordctl [COMMAND] -s [PATH] -f Canary
 > After installation, your plugins and themes will be located in `$XDG_CONFIG_HOME/BetterDiscord` (or `$HOME/.config/BetterDiscord`).
 Or, `$HOME/snap/discord/current/.config/BetterDiscord`, if you installed Discord via snap.
 
+## Updating
+
+You can update `betterdiscordctl` to the latest version by running the following command:
+
+```
+$ betterdiscordctl upgrade
+```
