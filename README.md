@@ -2,21 +2,32 @@
 
 A utility for managing BetterDiscord on Linux.
 
-To completely remove `betterdiscordctl`'s local data, delete
-`$XDG_DATA_HOME/betterdiscordctl` (or ` $HOME/.local/share/betterdiscordctl`).
+## Table of Contents
 
-## Usage
-
-Some simple instructions can be found [here](./USAGE.md).
+- [Dependencies](#dependencies)
+- [Options](#options)
+- [Commands](#commands)
+- [Installation](#installation)
+- [Examples](#examples)
+- [Locations](#locations)
 
 ## Dependencies
 
-Requires `nodejs`, `npm`, and `git`. If you don't have `nodejs` and `npm` in
-your distro's [package manager][node-packages], you can
-[download it][node-download].
+### Git
 
-[node-packages]: https://nodejs.org/en/download/package-manager/
-[node-download]: https://nodejs.org/en/download/
+Install using your [package manager][git-packages]
+
+[git-packages]: https://git-scm.com/download/linux
+
+### Node & npm
+
+Install using your [package manager][node-packages]
+
+Or download a [binary package][node-download]
+
+[node-packages]: https://nodejs.org/en/download/package-manager
+
+[node-download]: https://nodejs.org/en/download
 
 ## Options
 
@@ -75,8 +86,7 @@ Instead of maintaining a local installation of `asar`, use the one in `PATH`.
 
 ### `--snap`
 
-Needed for `betterdiscordctl` to find the modules directory if you installed Discord
-via snap. Furthermore, it automatically sets `-c` because symlinks don't work.
+Needed for `betterdiscordctl` to find the modules directory if Discord was installed via snap. Furthermore, it automatically sets `-c` because symlinks don't work.
 
 ## Commands
 
@@ -103,3 +113,68 @@ Uninstalls BetterDiscord, removing the managed repository if used.
 ### `upgrade`
 
 Updates `betterdiscordctl` to the latest version available on GitHub.
+
+## Installation
+
+### Arch
+
+You can install `betterdiscordctl` from [AUR][AUR-package].
+
+[AUR-package]: https://aur.archlinux.org/packages/betterdiscordctl-git
+
+### Other distributions
+
+```
+$ curl -O https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl
+$ chmod +x betterdiscordctl
+$ sudo mv betterdiscordctl /usr/local/bin
+```
+> /usr/local/bin must be in your `PATH` for this to work.
+
+You can then keep `betterdiscordctl` up to date with this command:
+
+```
+$ betterdiscordctl upgrade
+```
+
+## Examples
+
+### Status (Discord in `/usr/share/discord`)
+
+```
+$ betterdiscordctl status -s /usr/share
+````
+
+### Install (Discord PTB in `/opt/discord-ptb`)
+
+```
+$ betterdiscordctl install -s /opt -f PTB
+````
+
+### Update (Discord Canary in `/opt/discord-canary`)
+
+```
+$ betterdiscordctl update -s /opt -f Canary
+```
+
+### Uninstall (Snap Discord in `/snap/discord/current/usr/share/discord`)
+
+```
+$ betterdiscordctl uninstall -s /snap/discord/current/usr/share --snap
+```
+
+## Locations
+
+### `betterdiscordctl`'s local data
+
+`$XDG_DATA_HOME/betterdiscordctl` (or ` $HOME/.local/share/betterdiscordctl`)
+
+### BetterDiscord plugins & themes
+
+#### Stable/PTB/Canary
+
+`$XDG_CONFIG_HOME/BetterDiscord` (or `$HOME/.config/BetterDiscord`)
+
+#### Snap
+
+`$HOME/snap/discord/current/.config/BetterDiscord`
