@@ -64,8 +64,8 @@ inside Discord's user-specific storage directory).
 
 ### `-r` / `--bd-repo` (default `https://github.com/rauenzi/BetterDiscordApp`)
 
-When initially installing BetterDiscord, use the specified Git repository. Does
-_not_ affect updates. Defaults to Zerebos's BandagedBD fork.
+When initially installing BetterDiscord, use the specified Git repository.
+Does _not_ affect updates. Defaults to Zerebos's BandagedBD fork.
 
 ### `--bd-repo-branch` (default `stable16`)
 
@@ -73,13 +73,13 @@ When downloading from `--bd-repo`, use this branch.
 
 ### `-b` / `--betterdiscord`
 
-Instead of maintaining a local clone of BetterDiscord, use the specified
-directory.
+Instead of maintaining a local clone of BetterDiscord,
+use the specified directory.
 
 ### `-c` / `--copy-bd`
 
-Instead of using a symbolic link, copy the BetterDiscord directory into
-Discord's modules.
+Instead of using a symbolic link, copy the BetterDiscord directory
+into Discord's modules.
 
 ### `--global-asar`
 
@@ -87,7 +87,8 @@ Instead of maintaining a local installation of `asar`, use the one in `PATH`.
 
 ### `--snap`
 
-Needed for `betterdiscordctl` to find the modules directory if Discord was installed via Snap. Sets the `-c` flag due to Snaps' restriction to only access their own directories.
+Automatically detect the default Snap directories for Discord. The `-c`
+flag is set due to Snaps' restriction to only access their own directories.
 
 ## Commands
 
@@ -101,11 +102,11 @@ Installs BetterDiscord, managing what's necessary by default.
 
 ### `update`
 
-Updates BetterDiscord, updating your local repository if present (`origin`
-branch). Also cleans up any old patch methods, if found.
+Updates BetterDiscord, updating your local repository if present
+(`origin` branch). Also cleans up any old patch methods, if found.
 
-(Advanced users should avoid using this if locally modifying their linked
-repositories, and should instead manually fetch and update.)
+(Advanced users should avoid using this if locally modifying their
+linked repositories, and should instead manually fetch and update.)
 
 ### `uninstall`
 
@@ -138,7 +139,7 @@ $ betterdiscordctl update -s /opt -f Canary
 - **Uninstall** (Snap Discord in `/snap/discord/current/usr/share/discord`)
 
 ```
-$ betterdiscordctl uninstall -s /snap/discord/current/usr/share --snap
+$ betterdiscordctl uninstall --snap
 ```
 
 ## Locations

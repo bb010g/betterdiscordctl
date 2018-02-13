@@ -46,7 +46,7 @@ Options:
   -b, --betterdiscord=DIRECTORY  Use specified BetterDiscord directory
   -c, --copy-bd                  Copy BD directory instead of symlinking
       --global-asar              Use the asar in PATH instead of local
-      --snap                     Install to the Snap version of Discord
+      --snap                     Use the Snap version of Discord
 
 Commands:
   status (default)               Show the current Discord patch state.
@@ -197,6 +197,9 @@ if [ "$cmd" != upgrade ]; then
   if [ -z "$discord" ]; then
     while true; do
       for flavor in "${flavors[@]}"; do
+        if [ "$snap" ]; then
+          scan="/snap/discord${flavor,,}/current/usr/share"
+        fi
         verbose 2 "VV: Trying flavor '$flavor'" >&2
         for discord in "$scan/discord${flavor,,}" "$scan/discord-${flavor,,}" \
                        "$scan/Discord$flavor" "$scan/Discord-$flavor"; do
@@ -205,17 +208,16 @@ if [ "$cmd" != upgrade ]; then
             verbose 2 "VV: Detected $discord" >&2
             if [ "$snap" ]; then
               snap_data=$(snap run --shell discord${flavor,,} <<< 'echo "$SNAP_USER_DATA"')
-              tmp_config="$snap_data/.config/discord${flavor,,}"
-            else
-              tmp_config="$xdg_config/discord${flavor,,}"
+              xdg_config="$snap_data/.config"
             fi
-            if [ ! -d "$tmp_config" ]; then
-              printf "WARN: Config directory not found for %s (%s, %s).\n" "$flavor" "$discord" "$tmp_config" >&2
+            discord_config="$xdg_config/discord${flavor,,}"
+            if [ ! -d "$discord_config" ]; then
+              printf "WARN: Config directory not found for %s (%s, %s).\n" "$flavor" "$discord" "$discord_config" >&2
               continue 2
             fi
             verbose 1 "V: Using Discord at $discord" >&2
             if [ -z "$modules" ]; then
-              modules=("$tmp_config/"+([0-9]).+([0-9]).+([0-9])"/modules")
+              modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])"/modules")
               if ((! ${#modules[@]})); then
                 die 'ERROR: Discord modules directory not found.'
               fi
