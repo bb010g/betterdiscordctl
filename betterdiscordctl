@@ -2,10 +2,9 @@
 
 shopt -s nullglob dotglob extglob
 
-die() {
-  printf '%s\n' "$1" >&2
-  exit 1
-}
+# Constants
+VERSION=1.1.0
+GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
 
 # Options
 cmd=status
@@ -19,12 +18,46 @@ bd_repo_branch=stable16
 bd=
 copy_bd=
 global_asar=
+snap=
+flatpak=
 
 # Variables
 flavor=
 core=
 xdg_config="${XDG_CONFIG_DIR:-$HOME/.config}"
 data="${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl"
+
+show_help() {
+  printf 'Usage: %s [COMMAND] [OPTION...]\n\n' "${0##*/}"
+  cat << EOF
+Options:
+  -V, --version                  Display version info and exit
+  -h, --help                     Display this help message and exit
+  -v, --verbose                  Increase verbosity
+  -s, --scan=DIRECTORY           Directory to scan for Discord installation
+                                 (default '/opt')
+  -f, --flavors=FLAVORS          Comma-separated list of Discord flavors
+                                 (default ',Canary,PTB')
+  -d, --discord=DIRECTORY        Use specified Discord directory
+                                 (requires --modules)
+  -m, --modules=DIRECTORY        Use specified Discord modules directory
+  -r, --bd-repo=REPOSITORY       Use specified Git repo for BetterDiscord
+      --bd-repo-branch=BRANCH    Use specified Git branch for BetterDiscord
+                                 (default 'stable16')
+  -b, --betterdiscord=DIRECTORY  Use specified BetterDiscord directory
+  -c, --copy-bd                  Copy BD directory instead of symlinking
+      --global-asar              Use the asar in PATH instead of local
+      --snap                     Use the Snap version of Discord
+      --flatpak                  Use the Flatpak version of Discord
+
+Commands:
+  status (default)               Show the current Discord patch state.
+  install                        Install BetterDiscord.
+  update                         Update BetterDiscord.
+  uninstall                      Uninstall BetterDiscord.
+  upgrade                        Update betterdiscordctl.
+EOF
+}
 
 verbose() {
   if (( verbosity >= $1 )); then
@@ -33,40 +66,29 @@ verbose() {
   fi
 }
 
-show_help() {
-  printf 'Usage: %s [OPTION...] [COMMAND]\n\n' "${0##*/}"
-  cat << EOF
-Options:
-  -h, --help: Show this help
-  -v, --verbose: Increase verbosity
-  -s, --scan=DIRECTORY: Directory to scan for Discord installations
-                        (default '/opt')
-  -f, --flavors=FLAVORS: Comma-separated list of Discord flavors
-                         (default ',Canary,PTB')
-  -d, --discord=DIRECTORY: Use specified Discord directory (requires --modules)
-  -m, --modules=DIRECTORY: Use specified Discord modules directory
-  -r, --bd-repo=REPOSITORY: Use specified Git repository for BD installation
-  --bd-repo-branch=BRANCH: Use specified Git branch (default 'stable16')
-  -b, --betterdiscord=DIRECTORY: Use specified BetterDiscord directory
-  -c, --copy-bd: Copy BetterDiscord directory instead of symlinking
-  --global-asar: Use PATH's asar instead of a local installation
+die() {
+  if [ -z "$2" ]; then printf '%s\n' "$1" >&2
+  else printf '%s\n%s\n' "$1" "$2" >&2; fi
+  exit 1
+}
 
-Commands:
-  status (default): Show information about the current Discord patch state.
-  install: Install BetterDiscord.
-  update: Update BetterDiscord.
-  uninstall: Uninstall BetterDiscord.
-EOF
+die_with_help() {
+  die "$1" "Use \"--help\" for more information."
 }
 
 die_non_empty() {
-  die "ERROR: \"$1\" requires a non-empty option argument."
+  die_with_help "ERROR: \"$1\" requires a non-empty option argument."
 }
+
 
 while :; do
   case $1 in
-    status|install|update|uninstall)
+    status|install|update|uninstall|upgrade)
       cmd=$1
+      ;;
+    -V|--version)
+      printf 'betterdiscordctl %s\n' "$VERSION" >&2
+      exit
       ;;
     -h|-\?|--help)
       show_help; exit
@@ -86,12 +108,12 @@ while :; do
       ;;
     -f|--flavors)
       if [ "$2" ]; then
-        readarray -td, flavors <<<"$2,"; unset 'flavors[-1]'
+        readarray -td, flavors <<< "$2,"; unset 'flavors[-1]'
         shift
       else die_non_empty '--flavors'; fi
       ;;
     --flavors=?*)
-      readarray -td, flavors <<<"${1#*=},"; unset 'flavors[-1]'
+      readarray -td, flavors <<< "${1#*=},"; unset 'flavors[-1]'
       ;;
     --flavors=)
       die_non_empty '--flavors'
@@ -152,6 +174,14 @@ while :; do
     --global-asar)
       global_asar=yes
       ;;
+    --snap)
+      snap=yes
+      copy_bd=yes
+      ;;
+    --flatpak)
+      flatpak=yes
+      copy_bd=yes
+      ;;
     --)
       shift
       break
@@ -162,60 +192,91 @@ while :; do
     *)
       break
   esac
-
   shift
 done
 
-[ ! -d "$data" ] && mkdir -p "$data"
+mkdir -p "$data"
 [ ! -f "$data/bd_map" ] && touch "$data/bd_map"
 
-if [ -z "$discord" ]; then
-  while true; do
-    for flavor in "${flavors[@]}"; do
-      verbose 2 "VV: Trying flavor '$flavor'" >&2
-      for discord in "$scan/discord${flavor,,}" "$scan/discord-${flavor,,}" \
-                     "$scan/Discord$flavor" "$scan/Discord-$flavor"; do
-        verbose 2 "VV: Checking $discord" >&2
-        if [ -d "$discord" ] ; then
-          verbose 2 "VV: Detected $discord" >&2
-          tmp_config="$xdg_config/discord${flavor,,}"
-          if [ ! -d "$tmp_config" ]; then
-            printf "WARN: Config directory not found for %s (%s, %s).\n" "$flavor" "$discord" "$tmp_config" >&2
-            continue 2
-          fi
-          verbose 1 "V: Using Discord at $discord" >&2
-          if [ -z "$modules" ]; then
-            modules=("$tmp_config/"+([0-9]).+([0-9]).+([0-9])"/modules")
-            if ((! ${#modules[@]})); then
-              die 'ERROR: Discord modules directory not found.'
-            fi
-            modules="${modules[0]}"
-          else
-            # --modules
-            if [ ! -d "$modules" ]; then
-              die 'ERROR: Discord modules directory not found.'
-            fi
-          fi
-          break 3
-        fi
-      done
-    done
+if [ "$flatpak" ]; then
+  flatpak_location="$(readlink -f $(flatpak info com.discordapp.Discord | grep "Location:" | cut -d ':' -f2))"
+  discord="$flatpak_location/files/extra"
+  verbose 2 "VV: Checking $discord" >&2
+  if [ -d "$discord" ]; then
+    verbose 1 "V: Using Discord at $discord" >&2
+    discord_config="$HOME/.var/app/com.discordapp.Discord/config/discord"
+    if [ ! -d "$discord_config" ]; then
+      printf "WARN: Config directory not found for Discord (%s, %s).\n" "$discord" "$discord_config" >&2
+    fi
+    modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])"/modules")
+    if ((! ${#modules[@]})); then
+      die 'ERROR: Discord modules directory not found.'
+    fi
+    modules="${modules[0]}"
+  else
     die 'ERROR: Discord installation not found.'
-    break
-  done
-else
-  # --discord and --modules 
-  if [ -z "$modules" ]; then
-    die 'ERROR: "--discord" requires "--modules" to also be set.'
-  fi
-  if [ ! -d "$discord" ]; then
-    'ERROR: Discord installation not found.'
-  fi
-  if [ ! -d "$modules" ]; then
-    'ERROR: Discord modules directory not found.'
   fi
 fi
-core="$modules/discord_desktop_core"
+
+if [ "$cmd" != upgrade ]; then
+  if [ -z "$discord" ]; then
+    while true; do
+      for flavor in "${flavors[@]}"; do
+        if [ "$snap" ]; then
+          scan="/snap/discord${flavor,,}/current/usr/share"
+        fi
+        verbose 2 "VV: Trying flavor '$flavor'" >&2
+        for discord in "$scan/discord${flavor,,}" "$scan/discord-${flavor,,}" \
+                       "$scan/Discord$flavor" "$scan/Discord-$flavor"; do
+          verbose 2 "VV: Checking $discord" >&2
+          if [ -d "$discord" ] ; then
+            verbose 2 "VV: Detected $discord" >&2
+            if [ "$snap" ]; then
+              snap_data=$(snap run --shell discord${flavor,,} <<< 'echo "$SNAP_USER_DATA"')
+              xdg_config="$snap_data/.config"
+            fi
+            discord_config="$xdg_config/discord${flavor,,}"
+            if [ ! -d "$discord_config" ]; then
+              printf "WARN: Config directory not found for %s (%s, %s).\n" "$flavor" "$discord" "$discord_config" >&2
+              continue 2
+            fi
+            verbose 1 "V: Using Discord at $discord" >&2
+            if [ -z "$modules" ]; then
+              modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])"/modules")
+              if ((! ${#modules[@]})); then
+                die 'ERROR: Discord modules directory not found.'
+              fi
+              modules="${modules[0]}"
+            else
+              # --modules
+              if [ ! -d "$modules" ]; then
+                die 'ERROR: Discord modules directory not found.'
+              fi
+            fi
+            break 3
+          fi
+        done
+      done
+      die 'ERROR: Discord installation not found.'
+      break
+    done
+  else
+    # --discord and --modules
+    if [ -z "$modules" ]; then
+      die_with_help 'ERROR: "--discord" requires "--modules" to also be set.'
+    fi
+    if [ ! -d "$discord" ]; then
+      die 'ERROR: Discord installation not found.'
+    fi
+    if [ ! -d "$modules" ]; then
+      die 'ERROR: Discord modules directory not found.'
+    fi
+  fi
+  core="$modules/discord_desktop_core"
+  if [ ! -d "$core" ]; then
+    die "ERROR: Directory 'discord_desktop_core' not found in '$(readlink -f $modules)'"
+  fi
+fi
 
 # Commands
 
@@ -252,8 +313,7 @@ Linked core repository: %s\n' \
 
 bdc_install() {
   if [ -d "$core/core" ]; then
-    printf 'Already installed.\n' >&2
-    exit 1
+    die 'Already installed.'
   fi
 
   bd_patch
@@ -262,7 +322,7 @@ bdc_install() {
     printf 'Cloning %s...\n' "$bd_repo" >&2
     bd="$data/bd/$(bd_map_add "$discord" "$bd_repo")"
     if [ ! -d "$bd" ]; then
-      git clone "$bd_repo" -b stable16 --single-branch "$bd"
+      git clone "$bd_repo" -b "$bd_repo_branch" --single-branch "$bd"
     fi
   fi
 
@@ -308,7 +368,7 @@ bdc_uninstall() {
   fi
 
   printf "Killing Discord...\n" >&2
-  killall -SIGKILL -qwr '^[dD]iscord'
+  kill -SIGKILL $(lsof -t ${discord}/[dD]iscord*) 2>/dev/null
 
   bd_unpatch
 
@@ -325,6 +385,22 @@ bdc_uninstall() {
   fi
 
   printf 'Uninstalled.\n' >&2
+}
+
+bdc_upgrade() {
+  github_version=$(curl -s "$GITHUB_URL" | grep "version=" -m1 | cut -d '=' -f2)
+  if [[ "$github_version" > "$VERSION" ]]; then
+    printf 'Downloading betterdiscordctl...\n' >&2
+    curl -Sso /usr/local/bin/betterdiscordctl "$GITHUB_URL"
+    if [ $? -ne 0 ]; then die "Failed to update betterdiscordctl"
+    else printf 'Successfully updated betterdiscordctl.\n' >&2; fi
+  else
+    if [[ "$github_version" == "$VERSION" ]]; then
+      printf 'betterdiscordctl is already the latest version (%s).\n' "$VERSION" >&2
+    else
+      printf 'Local version (%s) is higher than GitHub version (%s).\n' "$VERSION" "$github_version" >&2
+    fi
+  fi
 }
 
 # Implementation functions
@@ -417,6 +493,9 @@ case "$cmd" in
     ;;
   uninstall)
     bdc_uninstall
+    ;;
+  upgrade)
+    bdc_upgrade
     ;;
   *)
     die "ERROR: Unknown command: $cmd"
