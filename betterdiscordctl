@@ -1,10 +1,11 @@
 #!/bin/bash
 
-shopt -s nullglob dotglob extglob
+shopt -s dotglob extglob nullglob
 
 # Constants
 VERSION=1.1.0
 GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
+DISABLE_UPGRADE=
 
 # Options
 cmd=status
@@ -73,7 +74,7 @@ die() {
 }
 
 die_with_help() {
-  die "$1" "Use \"--help\" for more information."
+  die "$1" 'Use "--help" for more information.'
 }
 
 die_non_empty() {
@@ -206,9 +207,9 @@ if [ "$flatpak" ]; then
     verbose 1 "V: Using Discord at $discord" >&2
     discord_config="$HOME/.var/app/com.discordapp.Discord/config/discord"
     if [ ! -d "$discord_config" ]; then
-      printf "WARN: Config directory not found for Discord (%s, %s).\n" "$discord" "$discord_config" >&2
+      printf 'WARN: Config directory not found for Discord (%s, %s).\n' "$discord" "$discord_config" >&2
     fi
-    modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])"/modules")
+    modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
     if ((! ${#modules[@]})); then
       die 'ERROR: Discord modules directory not found.'
     fi
@@ -237,12 +238,12 @@ if [ "$cmd" != upgrade ]; then
             fi
             discord_config="$xdg_config/discord${flavor,,}"
             if [ ! -d "$discord_config" ]; then
-              printf "WARN: Config directory not found for %s (%s, %s).\n" "$flavor" "$discord" "$discord_config" >&2
+              printf 'WARN: Config directory not found for %s (%s, %s).\n' "$flavor" "$discord" "$discord_config" >&2
               continue 2
             fi
             verbose 1 "V: Using Discord at $discord" >&2
             if [ -z "$modules" ]; then
-              modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])"/modules")
+              modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
               if ((! ${#modules[@]})); then
                 die 'ERROR: Discord modules directory not found.'
               fi
@@ -313,7 +314,7 @@ Linked core repository: %s\n' \
 
 bdc_install() {
   if [ -d "$core/core" ]; then
-    die 'Already installed.'
+    die 'ERROR: Already installed.'
   fi
 
   bd_patch
@@ -367,7 +368,7 @@ bdc_uninstall() {
     exit 1
   fi
 
-  printf "Killing Discord...\n" >&2
+  printf 'Killing Discord...\n' >&2
   kill -SIGKILL $(lsof -t ${discord}/[dD]iscord*) 2>/dev/null
 
   bd_unpatch
@@ -388,14 +389,22 @@ bdc_uninstall() {
 }
 
 bdc_upgrade() {
-  github_version=$(curl -s "$GITHUB_URL" | grep "version=" -m1 | cut -d '=' -f2)
-  if [[ "$github_version" > "$VERSION" ]]; then
+  if [ "$DISABLE_UPGRADE" ]; then
+    die 'ERROR: Upgrading has been disabled.' 'If you installed this from a package, your maintainer should keep betterdiscordctl up to date.'
+    return
+  fi
+  github_version="$(curl -sN "$GITHUB_URL" | grep 'VERSION=' -m1 | cut -d '=' -f2)"
+  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+    die "ERROR: GitHub couldn't be reached to check the version."
+  fi
+  verbose 1 "V: GitHub version $github_version" >&2
+  if semverGT "$github_version" "$VERSION"; then
     printf 'Downloading betterdiscordctl...\n' >&2
     curl -Sso /usr/local/bin/betterdiscordctl "$GITHUB_URL"
-    if [ $? -ne 0 ]; then die "Failed to update betterdiscordctl"
+    if [ $? -ne 0 ]; then die 'ERROR: Failed to update betterdiscordctl.' 'You may want to rerun this with sudo.'
     else printf 'Successfully updated betterdiscordctl.\n' >&2; fi
   else
-    if [[ "$github_version" == "$VERSION" ]]; then
+    if semverEQ "$github_version" "$VERSION"; then
       printf 'betterdiscordctl is already the latest version (%s).\n' "$VERSION" >&2
     else
       printf 'Local version (%s) is higher than GitHub version (%s).\n' "$VERSION" "$github_version" >&2
@@ -437,7 +446,7 @@ bd_patch() {
 }
 
 bd_unpatch() {
-  verbose 1 "V: Removing core folder from modules..." >&2
+  verbose 1 'V: Removing core folder from modules...' >&2
   sed "s/core'/core.asar'/g" -i "$core/index.js"
   rm -rf "$core/core"
 }
@@ -447,7 +456,7 @@ bd_map_entry_n() {
 }
 
 bd_map_fresh() {
-  verbose 1 "V: Generating fresh bd_map number..." >&2
+  verbose 1 'V: Generating fresh bd_map number...' >&2
   bd_map_entry_n "$data/bd_map" | sort | awk 'BEGIN {max=-1} NF != 0 {if ($1>max+1) {exit}; max=$1} END {print max+1}'
 }
 
@@ -477,6 +486,80 @@ bd_map_get_n() {
 bd_map_remove() {
   grep -vF "$1"$'\t\t' "$data/bd_map" > "$data/bd_map.temp"
   mv "$data/bd_map.temp" "$data/bd_map"
+}
+
+# From https://github.com/cloudflare/semver_bash , licensed under BSD-2-Clause
+
+function semverParseInto() {
+  local RE='[^0-9]*\([0-9]*\)[.]\([0-9]*\)[.]\([0-9]*\)\([0-9A-Za-z-]*\)'
+  eval $2=`echo $1 | sed -e "s#$RE#\1#"` # MAJOR
+  eval $3=`echo $1 | sed -e "s#$RE#\2#"` # MINOR
+  eval $4=`echo $1 | sed -e "s#$RE#\3#"` # PATCH
+  eval $5=`echo $1 | sed -e "s#$RE#\4#"` # SPECIAL
+}
+
+function semverEQ() {
+  local MAJOR_A=0
+  local MINOR_A=0
+  local PATCH_A=0
+  local SPECIAL_A=0
+
+  local MAJOR_B=0
+  local MINOR_B=0
+  local PATCH_B=0
+  local SPECIAL_B=0
+
+  semverParseInto $1 MAJOR_A MINOR_A PATCH_A SPECIAL_A
+  semverParseInto $2 MAJOR_B MINOR_B PATCH_B SPECIAL_B
+
+  if [ $MAJOR_A -ne $MAJOR_B ]; then return 1; fi
+  if [ $MINOR_A -ne $MINOR_B ]; then return 1; fi
+  if [ $PATCH_A -ne $PATCH_B ]; then return 1; fi
+  if [[ "_$SPECIAL_A" != "_$SPECIAL_B" ]]; then return 1; fi
+  return 0
+}
+
+function semverLT() {
+  local MAJOR_A=0
+  local MINOR_A=0
+  local PATCH_A=0
+  local SPECIAL_A=0
+
+  local MAJOR_B=0
+  local MINOR_B=0
+  local PATCH_B=0
+  local SPECIAL_B=0
+
+  semverParseInto $1 MAJOR_A MINOR_A PATCH_A SPECIAL_A
+  semverParseInto $2 MAJOR_B MINOR_B PATCH_B SPECIAL_B
+
+  if [ $MAJOR_A -lt $MAJOR_B ]; then return 0; fi
+
+  if [[ $MAJOR_A -le $MAJOR_B  && $MINOR_A -lt $MINOR_B ]]; then return 0; fi
+
+  if [[ $MAJOR_A -le $MAJOR_B  && $MINOR_A -le $MINOR_B && $PATCH_A -lt $PATCH_B ]]; then return 0; fi
+
+  if [[ "_$SPECIAL_A"  == "_" ]] && [[ "_$SPECIAL_B"  == "_" ]] ; then return 1; fi
+  if [[ "_$SPECIAL_A"  == "_" ]] && [[ "_$SPECIAL_B"  != "_" ]] ; then return 1; fi
+  if [[ "_$SPECIAL_A"  != "_" ]] && [[ "_$SPECIAL_B"  == "_" ]] ; then return 0; fi
+
+  if [[ "_$SPECIAL_A" < "_$SPECIAL_B" ]]; then return 0; fi
+
+  return 1
+}
+
+function semverGT() {
+  semverEQ $1 $2
+  local EQ=$?
+
+  semverLT $1 $2
+  local LT=$?
+
+  if [ $EQ -ne 0 ] && [ $LT -ne 0 ]; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 # Run command
