@@ -126,47 +126,39 @@ Updates `betterdiscordctl` to the latest version available on GitHub.
 
 ## Examples
 
-- **Status** (Discord in `/usr/share/discord`)
+    betterdiscordctl
 
-```
-$ betterdiscordctl status -s /usr/share
-````
+Works like `betterdiscordctl status`.
 
-- **Install** (Discord PTB in `/opt/discord-ptb`)
+    betterdiscordctl status -s /usr/share
 
-```
-$ betterdiscordctl install -s /opt -f PTB
-````
+Tells you the status of the default Discord install in `/usr/share`, instead of
+`/opt`.
 
-- **Update** (Discord Canary in `/opt/discord-canary`)
+    betterdiscordctl install -f PTB
 
-```
-$ betterdiscordctl update -s /opt -f Canary
-```
+Installs BetterDiscord to the PTB flavor, instead of the default.
 
-- **Uninstall** (Snap Discord in `/snap/discord/current/usr/share/discord`)
+    betterdiscordctl update -f Canary
 
-```
-$ betterdiscordctl uninstall --snap
-```
+Updates the existing Discord Canary install of BetterDiscord.
 
-## Locations
+    betterdiscordctl uninstall --snap
 
+Uninstalls BetterDiscord for a Discord installed via Snap, instead of
+traditional packages.
 
-### `betterdiscordctl`'s local data
+## Files
 
-`$XDG_DATA_HOME/betterdiscordctl` (or `$HOME/.local/share/betterdiscordctl`)
-
-### BetterDiscord plugins & themes
-
-- **Stable/PTB/Canary**
-
-`$XDG_CONFIG_HOME/BetterDiscord` (or `$HOME/.config/BetterDiscord`)
-
-- **Snap**
-
-`$HOME/snap/discord/current/.config/BetterDiscord`
-
-- **Flatpak**
-
-`$HOME/.var/app/com.discordapp.Discord/config/BetterDiscord`
+* `$XDG_DATA_HOME/betterdiscordctl` (fallback `~/.local/share/betterdiscordctl`)
+  * `betterdiscordctl`'s machine-specific data directory.
+* `$XDG_DATA_HOME/betterdiscordctl/bd_map`
+  * A mapping of current Discord installations to BetterDiscord clones.
+* `$XDG_DATA_HOME/betterdiscordctl/bd`
+  * A directory of BetterDiscord clones, indexed by `bd_map`.
+* `$XDG_DATA_HOME/asar`
+  * A locally managed installation of `asar`.
+* `$XDG_CONFIG_HOME/BetterDiscord` (fallback `~/.config/BetterDiscord`)
+  * `betterdiscord`'s normal data & configuration.
+  * This will fall back to `$SNAP_USER_DATA/.config` when `--snap` is used.
+  * This will fall back to `~/.var/app/com.discordapp.Discord/config/BetterDiscord` when `--flatpak` is used.

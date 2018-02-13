@@ -233,8 +233,7 @@ if [ "$cmd" != upgrade ]; then
           if [ -d "$discord" ] ; then
             verbose 2 "VV: Detected $discord" >&2
             if [ "$snap" ]; then
-              snap_data=$(snap run --shell discord${flavor,,} <<< 'echo "$SNAP_USER_DATA"')
-              xdg_config="$snap_data/.config"
+              xdg_config=$(snap run --shell discord${flavor,,} <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}"')
             fi
             discord_config="$xdg_config/discord${flavor,,}"
             if [ ! -d "$discord_config" ]; then
