@@ -87,8 +87,16 @@ Instead of maintaining a local installation of `asar`, use the one in `PATH`.
 
 ### `--snap`
 
-Automatically detect the default Snap directories for Discord. The `-c`
-flag is set due to Snaps' restriction to only access their own directories.
+Automatically detect the default Snap directories for Discord.
+The `-c` flag is set due to Snaps apps being [confined][snapcraft-docs].
+
+### `--flatpak`
+
+Automatically detect the default Flatpak directories for Discord.
+The `-c` flag is set due to Flatpak apps being [sandboxed][flatpak-docs].
+
+[snapcraft-docs]: https://docs.snapcraft.io/reference/confinement
+[flatpak-docs]:   http://docs.flatpak.org/en/latest/working-with-the-sandbox.html
 
 ## Commands
 
@@ -158,3 +166,7 @@ $ betterdiscordctl uninstall --snap
 - **Snap**
 
 `$HOME/snap/discord/current/.config/BetterDiscord`
+
+- **Flatpak**
+
+`$HOME/.var/app/com.discordapp.Discord/config/BetterDiscord`

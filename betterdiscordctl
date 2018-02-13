@@ -19,6 +19,7 @@ bd=
 copy_bd=
 global_asar=
 snap=
+flatpak=
 
 # Variables
 flavor=
@@ -47,6 +48,7 @@ Options:
   -c, --copy-bd                  Copy BD directory instead of symlinking
       --global-asar              Use the asar in PATH instead of local
       --snap                     Use the Snap version of Discord
+      --flatpak                  Use the Flatpak version of Discord
 
 Commands:
   status (default)               Show the current Discord patch state.
@@ -176,6 +178,10 @@ while :; do
       snap=yes
       copy_bd=yes
       ;;
+    --flatpak)
+      flatpak=yes
+      copy_bd=yes
+      ;;
     --)
       shift
       break
@@ -186,12 +192,31 @@ while :; do
     *)
       break
   esac
-
   shift
 done
 
 mkdir -p "$data"
 [ ! -f "$data/bd_map" ] && touch "$data/bd_map"
+
+if [ "$flatpak" ]; then
+  flatpak_location="$(readlink -f $(flatpak info com.discordapp.Discord | grep "Location:" | cut -d ':' -f2))"
+  discord="$flatpak_location/files/extra"
+  verbose 2 "VV: Checking $discord" >&2
+  if [ -d "$discord" ]; then
+    verbose 1 "V: Using Discord at $discord" >&2
+    discord_config="$HOME/.var/app/com.discordapp.Discord/config/discord"
+    if [ ! -d "$discord_config" ]; then
+      printf "WARN: Config directory not found for Discord (%s, %s).\n" "$discord" "$discord_config" >&2
+    fi
+    modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])"/modules")
+    if ((! ${#modules[@]})); then
+      die 'ERROR: Discord modules directory not found.'
+    fi
+    modules="${modules[0]}"
+  else
+    die 'ERROR: Discord installation not found.'
+  fi
+fi
 
 if [ "$cmd" != upgrade ]; then
   if [ -z "$discord" ]; then
@@ -343,7 +368,7 @@ bdc_uninstall() {
   fi
 
   printf "Killing Discord...\n" >&2
-  kill -SIGKILL $(lsof -t ${discord}/[dD]iscord*)
+  kill -SIGKILL $(lsof -t ${discord}/[dD]iscord*) 2>/dev/null
 
   bd_unpatch
 
