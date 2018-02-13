@@ -199,7 +199,7 @@ mkdir -p "$data"
 [ ! -f "$data/bd_map" ] && touch "$data/bd_map"
 
 if [ "$flatpak" ]; then
-  flatpak_location="$(readlink -f $(flatpak info com.discordapp.Discord | grep "Location:" | cut -d ':' -f2))"
+  flatpak_location="$(readlink -f $(flatpak info com.discordapp.Discord | grep 'Location:' | sed 's/Location: //g'))"
   discord="$flatpak_location/files/extra"
   verbose 2 "VV: Checking $discord" >&2
   if [ -d "$discord" ]; then
