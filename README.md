@@ -1,6 +1,6 @@
 # betterdiscordctl
 
-A utility for managing BetterDiscord on Linux.
+A manager for BetterDiscord on Linux.
 
 ## Installation
 
@@ -10,90 +10,94 @@ A utility for managing BetterDiscord on Linux.
 
 ### Manual
 
-Requires `git`, `nodejs`, and `npm`. You can install `git` from your distro's [package manager][git-packages]. If you don't have `nodejs` and `npm` in
-your distro's [package manager][node-packages], you can
+Requires `git`, `nodejs`, and `npm`. You can install `git` from your distro's
+[package manager][git-packages]. If you don't have `nodejs` and `npm` in your
+distro's [package manager][node-packages], you can
 [download them][node-download].
 
 [git-packages]:  https://git-scm.com/download/linux/
 [node-packages]: https://nodejs.org/en/download/package-manager/
 [node-download]: https://nodejs.org/en/download/
 
+You can then install as follows (`#` means that a command needs root, which you
+can get by prefixing a command with `sudo`):
+
 ```
 $ curl -O https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl
 $ chmod +x betterdiscordctl
-$ sudo mv betterdiscordctl /usr/local/bin
+# mv betterdiscordctl /usr/local/bin
 ```
 
-You can then keep `betterdiscordctl` up to date with this command:
+You can then keep `betterdiscordctl` up to date with one command:
 
 ```
-$ betterdiscordctl upgrade
+# betterdiscordctl upgrade
 ```
 
 ## Options
 
-### `-V` / `--version`
+* `-V` / `--version`
 
-Displays the current version.
+  Displays the current version.
 
-### `-h` / `--help`
+* `-h` / `--help`
 
-Displays usage information.
+  Displays usage information.
 
-### `-v` / `--verbose`
+* `-v` / `--verbose`
 
-Increases the verbosity level, for progressively more debugging information.
+  Increases the verbosity level, for progressively more debugging information.
 
-### `-s` / `--scan` (default `/opt`)
+* `-s` / `--scan` (default `/opt`)
 
-Changes the directory scanned for Discord installations.
+  Changes the directory scanned for Discord installations.
 
-### `-f` / `--flavors` (default `,Canary,PTB`)
+* `-f` / `--flavors` (default `,Canary,PTB`)
 
-When scanning, looks for installations with the given suffixes (both hyphenated
-and unhyphenated). Stable is `''`, as it has no suffix.
+  When scanning, looks for installations with the given suffixes (both
+  hyphenated and unhyphenated). Stable is `''`, as it has no suffix.
 
-### `-d` / `--discord` (requires `--modules`)
+* `-d` / `--discord` (requires `--modules`)
 
-Skip scanning and use the Discord installation directory specified.
+  Skip scanning and use the Discord installation directory specified.
 
-### `-m` / `--modules`
+* `-m` / `--modules`
 
-Disregards scanning results and uses the specified modules directory (found
-inside Discord's user-specific storage directory).
+  Disregards scanning results and uses the specified modules directory (found
+  inside Discord's user-specific storage directory).
 
-### `-r` / `--bd-repo` (default `https://github.com/rauenzi/BetterDiscordApp`)
+* `-r` / `--bd-repo` (default `https://github.com/rauenzi/BetterDiscordApp`)
 
-When initially installing BetterDiscord, use the specified Git repository.
-Does _not_ affect updates. Defaults to Zerebos's BandagedBD fork.
+  When installing BetterDiscord, use the specified Git repository. Does _not_
+  affect updates. Defaults to Zerebos's BandagedBD fork.
 
-### `--bd-repo-branch` (default `stable16`)
+* `--bd-repo-branch` (default `stable16`)
 
-When downloading from `--bd-repo`, use this branch.
+  When downloading from `--bd-repo`, use this branch.
 
-### `-b` / `--betterdiscord`
+* `-b` / `--betterdiscord`
 
-Instead of maintaining a local clone of BetterDiscord,
-use the specified directory.
+  Instead of maintaining a local clone of BetterDiscord, use the specified
+  directory.
 
-### `-c` / `--copy-bd`
+* `-c` / `--copy-bd`
 
-Instead of using a symbolic link, copy the BetterDiscord directory
-into Discord's modules.
+  Instead of using a symbolic link, copy the BetterDiscord directory into
+  Discord's modules.
 
-### `--global-asar`
+* `--global-asar`
 
-Instead of maintaining a local installation of `asar`, use the one in `PATH`.
+  Instead of maintaining a local installation of `asar`, use the one in `PATH`.
 
-### `--snap`
+* `--snap`
 
-Automatically detect the default Snap directories for Discord.
-The `-c` flag is set due to Snaps apps being [confined][snapcraft-docs].
+  Automatically detect the default Snap directories for Discord. The `-c` flag
+  is set due to Snaps apps being [confined][snapcraft-docs].
 
-### `--flatpak`
+* `--flatpak`
 
-Automatically detect the default Flatpak directories for Discord.
-The `-c` flag is set due to Flatpak apps being [sandboxed][flatpak-docs].
+  Automatically detect the default Flatpak directories for Discord. The `-c`
+  flag is set due to Flatpak apps being [sandboxed][flatpak-docs].
 
 [snapcraft-docs]: https://docs.snapcraft.io/reference/confinement
 [flatpak-docs]:   http://docs.flatpak.org/en/latest/working-with-the-sandbox.html
