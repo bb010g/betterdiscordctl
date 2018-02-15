@@ -7,6 +7,7 @@ A manager for BetterDiscord on Linux.
 ### Packages
 
 - Arch: https://aur.archlinux.org/packages/betterdiscordctl-git
+- Ubuntu: https://launchpad.net/~chronobserver/+archive/ubuntu/betterdiscordctl
 
 ### Manual
 
