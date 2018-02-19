@@ -109,12 +109,12 @@ while :; do
       ;;
     -f|--flavors)
       if [ "$2" ]; then
-        readarray -td, flavors <<< "$2,"; unset 'flavors[-1]'
+        read -at flavors <<< "$2,"; unset 'flavors[-1]'
         shift
       else die_non_empty '--flavors'; fi
       ;;
     --flavors=?*)
-      readarray -td, flavors <<< "${1#*=},"; unset 'flavors[-1]'
+      read -at flavors <<< "${1#*=},"; unset 'flavors[-1]'
       ;;
     --flavors=)
       die_non_empty '--flavors'
