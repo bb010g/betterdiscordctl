@@ -269,6 +269,7 @@ if [ "$cmd" != upgrade ]; then
       break
     done
   else
+    flavor="$flavors"
     # --discord and --modules
     if [ -z "$modules" ]; then
       die_with_help 'ERROR: "--discord" requires "--modules" to also be set.'
