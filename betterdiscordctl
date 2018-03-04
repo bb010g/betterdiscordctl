@@ -3,7 +3,7 @@
 shopt -s dotglob extglob nullglob
 
 # Constants
-VERSION=1.1.0
+VERSION=1.1.1
 GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
 DISABLE_UPGRADE=
 
@@ -108,13 +108,17 @@ while :; do
       die_non_empty '--scan'
       ;;
     -f|--flavors)
-      if [ "$2" ]; then
-        readarray -td, flavors <<< "$2,"; unset 'flavors[-1]'
+      if [ -n "${2// }" ]; then
+        IFS=',' read -ra flavors <<< "$2"
         shift
       else die_non_empty '--flavors'; fi
       ;;
     --flavors=?*)
-      readarray -td, flavors <<< "${1#*=},"; unset 'flavors[-1]'
+      if [[ "${1#*=}" =~ ^[[:space:]]+$ ]]; then
+        die_non_empty '--flavors'
+      else
+        IFS=',' read -ra flavors <<< "${1#*=}"
+      fi
       ;;
     --flavors=)
       die_non_empty '--flavors'
@@ -200,7 +204,7 @@ mkdir -p "$data"
 [ ! -f "$data/bd_map" ] && touch "$data/bd_map"
 
 if [ "$flatpak" ]; then
-  flatpak_location="$(readlink -f $(flatpak info com.discordapp.Discord | grep 'Location:' | sed 's/Location: //g'))"
+  flatpak_location="$(readlink -f "$(flatpak info com.discordapp.Discord | grep 'Location:' | sed 's/Location: //g')")"
   discord="$flatpak_location/files/extra"
   verbose 2 "VV: Checking $discord" >&2
   if [ -d "$discord" ]; then
@@ -222,9 +226,13 @@ fi
 if [ "$cmd" != upgrade ]; then
   if [ -z "$discord" ]; then
     while true; do
-      for flavor in "${flavors[@]}"; do
+      for flavor in "${flavors[@]// }"; do
         if [ "$snap" ]; then
-          scan="/snap/discord${flavor,,}/current/usr/share"
+          if snap run --shell "discord" <<< 'echo "$XDG_DATA_DIRS"' | grep -q '/var/lib/snapd'; then
+            scan="/var/lib/snapd/snap/discord/current/usr/share"
+          else
+            scan="/snap/discord/current/usr/share"
+          fi
         fi
         verbose 2 "VV: Trying flavor '$flavor'" >&2
         for discord in "$scan/discord${flavor,,}" "$scan/discord-${flavor,,}" \
@@ -233,7 +241,7 @@ if [ "$cmd" != upgrade ]; then
           if [ -d "$discord" ] ; then
             verbose 2 "VV: Detected $discord" >&2
             if [ "$snap" ]; then
-              xdg_config=$(snap run --shell discord${flavor,,} <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}"')
+              xdg_config="$(snap run --shell "discord${flavor,,}" <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}"')"
             fi
             discord_config="$xdg_config/discord${flavor,,}"
             if [ ! -d "$discord_config" ]; then
@@ -274,7 +282,7 @@ if [ "$cmd" != upgrade ]; then
   fi
   core="$modules/discord_desktop_core"
   if [ ! -d "$core" ]; then
-    die "ERROR: Directory 'discord_desktop_core' not found in '$(readlink -f $modules)'"
+    die "ERROR: Directory 'discord_desktop_core' not found in '$(readlink -f "$modules")'"
   fi
 fi
 
@@ -291,7 +299,7 @@ bdc_status() {
   if [ -d "$core/core" ]; then
     core_patched=yes
     if [ -h "$core/core/node_modules/betterdiscord" ]; then
-      linked_dir="$(readlink "$core/core/node_modules/betterdiscord")"
+      linked_dir="$(readlink -m "$core/core/node_modules/betterdiscord")"
       if [ -d "$core/core/node_modules/betterdiscord" ]; then
         pushd "$core/core/node_modules/betterdiscord" >/dev/null
         linked_repo="$(git remote get-url origin 2>/dev/null || printf 'no\n')"
@@ -367,8 +375,19 @@ bdc_uninstall() {
     exit 1
   fi
 
-  printf 'Killing Discord...\n' >&2
-  kill -SIGKILL $(lsof -t ${discord}/[dD]iscord*) 2>/dev/null
+  if [ -z "$flavor" ]; then
+    process_name='Discord'
+  else
+    if [ "${flavor,,}" == 'ptb' ]; then
+      process_name='DiscordPTB'
+    else
+      process_name='DiscordCanary'
+    fi
+  fi
+
+  printf 'Killing %s processes...\n' "$process_name" >&2
+  pkill -ex -SIGKILL $(ps ax | awk "BEGIN{IGNORECASE=1}/discord(-){0,1}${flavor}/{print \$5}" | rev | \
+                      cut -d '/' -f1 | rev | grep -iE "^discord(-){0,1}${flavor}$" | head -1) 2>/dev/null
 
   bd_unpatch
 
@@ -399,10 +418,11 @@ bdc_upgrade() {
   verbose 1 "V: GitHub version $github_version" >&2
   if semverGT "$github_version" "$VERSION"; then
     printf 'Downloading betterdiscordctl...\n' >&2
-    curl -Sso /usr/local/bin/betterdiscordctl "$GITHUB_URL"
-    if [ $? -ne 0 ]; then die 'ERROR: Failed to update betterdiscordctl.' 'You may want to rerun this with sudo.'
-    else printf 'Successfully updated betterdiscordctl.\n' >&2; fi
-  else
+    if curl -Sso /usr/local/bin/betterdiscordctl "$GITHUB_URL"; then
+      printf 'Successfully updated betterdiscordctl.\n' >&2
+    else
+      die 'ERROR: Failed to update betterdiscordctl.' 'You may want to rerun this with sudo.'
+    fi
     if semverEQ "$github_version" "$VERSION"; then
       printf 'betterdiscordctl is already the latest version (%s).\n' "$VERSION" >&2
     else
@@ -435,9 +455,14 @@ bdc_asar() {
 bd_patch() {
   verbose 1 'V: Unpacking core asar...' >&2
   bdc_asar e "$core/core.asar" "$core/core"
-  sed "s/core\.asar'/core'/g" -i "$core/index.js"
+
+  if [ ! -d "$core/core" ]; then
+    die 'ERROR: Failed to unpack core asar.' \
+        'You may want to install or update nodejs and npm.'
+  fi
 
   verbose 1 'V: Patching core entry...' >&2
+  sed -e "s/core\.asar'/core'/g" -i "$core/index.js"
   sed \
     -e "/var *_url *=/ a var _betterDiscord = require('betterdiscord'); var _betterDiscord2;" \
     -e "/mainWindow *= *new/ a _betterDiscord2 = new _betterDiscord.BetterDiscord(mainWindow);" \
