@@ -108,17 +108,13 @@ while :; do
       die_non_empty '--scan'
       ;;
     -f|--flavors)
-      if [ -n "${2// }" ]; then
+      if [ "$2" ]; then
         IFS=',' read -ra flavors <<< "$2"
         shift
       else die_non_empty '--flavors'; fi
       ;;
     --flavors=?*)
-      if [[ "${1#*=}" =~ ^[[:space:]]+$ ]]; then
-        die_non_empty '--flavors'
-      else
         IFS=',' read -ra flavors <<< "${1#*=}"
-      fi
       ;;
     --flavors=)
       die_non_empty '--flavors'
@@ -203,6 +199,17 @@ done
 mkdir -p "$data"
 [ ! -f "$data/bd_map" ] && touch "$data/bd_map"
 
+if [ "$snap" ]; then
+  discord=$(grep Icon /var/lib/snapd/desktop/applications/discord_discord.desktop | sed 's/Icon=//g; s/\/discord.png//g')
+  xdg_config="$(snap run --shell discord <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}"')"
+  discord_config="$xdg_config/discord"
+  modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
+  if ((! ${#modules[@]})); then
+    die 'ERROR: Discord modules directory not found.'
+  fi
+  modules="${modules[0]}"
+fi
+
 if [ "$flatpak" ]; then
   flatpak_location="$(readlink -f "$(flatpak info com.discordapp.Discord | grep 'Location:' | sed 's/Location: //g')")"
   discord="$flatpak_location/files/extra"
@@ -227,22 +234,12 @@ if [ "$cmd" != upgrade ]; then
   if [ -z "$discord" ]; then
     while true; do
       for flavor in "${flavors[@]// }"; do
-        if [ "$snap" ]; then
-          if snap run --shell "discord" <<< 'echo "$XDG_DATA_DIRS"' | grep -q '/var/lib/snapd'; then
-            scan="/var/lib/snapd/snap/discord/current/usr/share"
-          else
-            scan="/snap/discord/current/usr/share"
-          fi
-        fi
         verbose 2 "VV: Trying flavor '$flavor'" >&2
         for discord in "$scan/discord${flavor,,}" "$scan/discord-${flavor,,}" \
                        "$scan/Discord$flavor" "$scan/Discord-$flavor"; do
           verbose 2 "VV: Checking $discord" >&2
           if [ -d "$discord" ] ; then
             verbose 2 "VV: Detected $discord" >&2
-            if [ "$snap" ]; then
-              xdg_config="$(snap run --shell "discord${flavor,,}" <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}"')"
-            fi
             discord_config="$xdg_config/discord${flavor,,}"
             if [ ! -d "$discord_config" ]; then
               printf 'WARN: Config directory not found for %s (%s, %s).\n' "$flavor" "$discord" "$discord_config" >&2
