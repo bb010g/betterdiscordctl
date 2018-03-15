@@ -3,7 +3,7 @@
 shopt -s dotglob extglob nullglob
 
 # Constants
-VERSION=1.1.1
+VERSION=1.2.0
 GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
 DISABLE_UPGRADE=
 
