@@ -108,13 +108,11 @@ while :; do
       die_non_empty '--scan'
       ;;
     -f|--flavors)
-      if [ "$2" ]; then
-        IFS=',' read -ra flavors <<< "$2"
-        shift
+      if [ "$2" ]; then IFS=',' read -ra flavors <<< "$2"; shift
       else die_non_empty '--flavors'; fi
       ;;
     --flavors=?*)
-        IFS=',' read -ra flavors <<< "${1#*=}"
+      IFS=',' read -ra flavors <<< "${1#*=}"
       ;;
     --flavors=)
       die_non_empty '--flavors'
@@ -297,7 +295,7 @@ bdc_status() {
   if [ -d "$core/core" ]; then
     core_patched=yes
     if [ -h "$core/core/node_modules/betterdiscord" ]; then
-      linked_dir="$(readlink -m "$core/core/node_modules/betterdiscord")"
+      linked_dir="$(readlink "$core/core/node_modules/betterdiscord")"
       if [ -d "$core/core/node_modules/betterdiscord" ]; then
         pushd "$core/core/node_modules/betterdiscord" >/dev/null
         linked_repo="$(git remote get-url origin 2>/dev/null || printf 'no\n')"
