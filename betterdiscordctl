@@ -3,7 +3,7 @@
 shopt -s dotglob extglob nullglob
 
 # Constants
-VERSION=1.2.0
+VERSION=1.2.1
 GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
 DISABLE_UPGRADE=
 
@@ -198,14 +198,29 @@ mkdir -p "$data"
 [ ! -f "$data/bd_map" ] && touch "$data/bd_map"
 
 if [ "$snap" ]; then
-  discord=$(grep Icon /var/lib/snapd/desktop/applications/discord_discord.desktop | sed 's/Icon=//g; s/\/discord.png//g')
-  xdg_config="$(snap run --shell discord <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}"')"
-  discord_config="$xdg_config/discord"
-  modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
-  if ((! ${#modules[@]})); then
-    die 'ERROR: Discord modules directory not found.'
+  desktop_file='/var/lib/snapd/desktop/applications/discord_discord.desktop'
+  if [ -f $desktop_file ]; then
+    discord=$(grep Icon $desktop_file | sed 's/Icon=//g; s/\/discord.png//g')
+  else
+    if [ -d '/snap/discord' ]; then
+      discord=$(readlink -f /snap/discord/current/usr/share/discord)
+    else
+      discord=$(readlink -f /var/lib/snapd/snap/discord/current/usr/share/discord)
+    fi
   fi
-  modules="${modules[0]}"
+  verbose 2 "VV: Checking $discord"
+  if [ -d "$discord" ]; then
+    verbose 1 "V: Using Discord at $discord"
+    xdg_config="$(snap run --shell discord <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}"')"
+    discord_config="$xdg_config/discord"
+    modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
+    if ((! ${#modules[@]})); then
+      die 'ERROR: Discord modules directory not found.'
+    fi
+    modules="${modules[0]}"
+  else
+    die 'ERROR: Discord installation not found.'
+  fi
 fi
 
 if [ "$flatpak" ]; then
@@ -433,7 +448,8 @@ bdc_asar() {
   if [ "$global_asar" ]; then
     asar "$@"
   else
-    if mkdir "$data/asar" 2>/dev/null; then
+    mkdir -p "$data/asar"
+    if [ ! -d "$data/asar/node_modules" ]; then
       pushd "$data/asar" >/dev/null
       printf '{"devDependencies":{"asar": "*"}}\n' > package.json
       printf 'Installing asar...\n' >&2
@@ -458,11 +474,11 @@ bd_patch() {
   fi
 
   verbose 1 'V: Patching core entry...' >&2
-  sed -e "s/core\.asar'/core'/g" -i "$core/index.js"
-  sed \
+  sed -i "$core/index.js" -e "s/core\.asar'/core'/g"
+  sed -i "$core/core/app/mainScreen.js" \
     -e "/var *_url *=/ a var _betterDiscord = require('betterdiscord'); var _betterDiscord2;" \
     -e "/mainWindow *= *new/ a _betterDiscord2 = new _betterDiscord.BetterDiscord(mainWindow);" \
-    -i "$core/core/app/mainScreen.js"
+    -e '/nodeIntegration: false/d'
 }
 
 bd_unpatch() {
