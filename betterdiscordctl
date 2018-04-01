@@ -68,13 +68,15 @@ verbose() {
 }
 
 die() {
-  if [ -z "$2" ]; then printf '%s\n' "$1" >&2
-  else printf '%s\n%s\n' "$1" "$2" >&2; fi
+  while [ $# -gt 0 ]; do
+    printf '%s\n' "$1" >&2
+    shift
+  done
   exit 1
 }
 
 die_with_help() {
-  die "$1" 'Use "--help" for more information.'
+  die "$@" 'Use "--help" for more information.'
 }
 
 die_non_empty() {
@@ -295,13 +297,9 @@ fi
 # Commands
 
 bdc_status() {
-  app_patched=no
   core_patched=no
   linked_dir=no
   linked_repo=no
-  if [ -d "$discord/resources/app" ]; then
-    app_patched=yes
-  fi
   if [ -d "$core/core" ]; then
     core_patched=yes
     if [ -h "$core/core/node_modules/betterdiscord" ]; then
@@ -318,11 +316,10 @@ bdc_status() {
 
   printf 'Discord: %s
 Modules: %s
-App patched: %s
 Core patched: %s
 Linked core directory: %s
 Linked core repository: %s\n' \
-    "$discord" "$modules" "$app_patched" "$core_patched" "$linked_dir" "$linked_repo"
+    "$discord" "$modules" "$core_patched" "$linked_dir" "$linked_repo"
 }
 
 bdc_install() {
@@ -333,10 +330,11 @@ bdc_install() {
   bd_patch
 
   if [ ! "$bd" ]; then
-    printf 'Cloning %s...\n' "$bd_repo" >&2
     bd="$data/bd/$(bd_map_add "$discord" "$bd_repo")"
     if [ ! -d "$bd" ]; then
+      printf 'Cloning %s...\n' "$bd_repo" >&2
       git clone "$bd_repo" -b "$bd_repo_branch" --single-branch "$bd"
+      verbose 1 "V: Cloned to $bd" >&2
     fi
   fi
 
@@ -365,18 +363,18 @@ bdc_update() {
     fi
   fi
   pushd "$core/core/node_modules/betterdiscord" >/dev/null
-  if git rev-parse --is-inside-work-tree > /dev/null 2>/dev/null; then
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     printf 'Updating Git repository...\n' >&2
     git fetch origin
     git reset --hard "origin/$bd_repo_branch"
   else
-    printf 'No Git repository found.\n' >&2
+    printf 'WARN: No Git repository found.\n' >&2
   fi
   popd >/dev/null
 }
 
 bdc_uninstall() {
-  if [ ! -e "$core/core" ]; then
+  if [ ! -d "$core/core" ]; then
     printf 'Not installed.\n' >&2
     exit 1
   fi
@@ -401,11 +399,13 @@ bdc_uninstall() {
   bd_n=$(bd_map_get_dir "$discord" | bd_map_entry_n)
   bd_map_remove "$discord"
   if [ -z "$(bd_map_get_n $bd_n)" ]; then
+    verbose 2 "VV: Removing $data/bd/$bd_n"
     rm -rf "$data/bd/$bd_n"
   fi
 
   # Clean up legacy cruft
   if [ -d "$discord/resources/app" ]; then
+    printf 'Removing legacy app directory...\n' >&2
     rm -r "$discord/resources/app"
   fi
 
@@ -414,14 +414,15 @@ bdc_uninstall() {
 
 bdc_upgrade() {
   if [ "$DISABLE_UPGRADE" ]; then
-    die 'ERROR: Upgrading has been disabled.' 'If you installed this from a package, your maintainer should keep betterdiscordctl up to date.'
-    return
+    die 'ERROR: Upgrading has been disabled.' \
+        'If you installed this from a package, your maintainer should keep betterdiscordctl up to date.'
   fi
   github_version="$(curl -sN "$GITHUB_URL" | grep 'VERSION=' -m1 | cut -d '=' -f2)"
   if [ "${PIPESTATUS[0]}" -ne 0 ]; then
     die "ERROR: GitHub couldn't be reached to check the version."
   fi
-  verbose 1 "V: GitHub version $github_version" >&2
+  verbose 1 "V: Local version: $VERSION" >&2
+  verbose 1 "V: GitHub version: $github_version" >&2
   if semverGT "$github_version" "$VERSION"; then
     printf 'Downloading betterdiscordctl...\n' >&2
     if curl -Sso /usr/local/bin/betterdiscordctl "$GITHUB_URL"; then
@@ -429,6 +430,7 @@ bdc_upgrade() {
     else
       die 'ERROR: Failed to update betterdiscordctl.' 'You may want to rerun this with sudo.'
     fi
+  else
     if semverEQ "$github_version" "$VERSION"; then
       printf 'betterdiscordctl is already the latest version (%s).\n' "$VERSION" >&2
     else
@@ -444,13 +446,12 @@ bdc_asar() {
     asar "$@"
   else
     mkdir -p "$data/asar"
+    pushd "$data/asar" >/dev/null
     if [ ! -d "$data/asar/node_modules" ]; then
-      pushd "$data/asar" >/dev/null
       printf '{"devDependencies":{"asar": "*"}}\n' > package.json
       printf 'Installing asar...\n' >&2
       npm install
     else
-      pushd "$data/asar" >/dev/null
       printf 'Updating asar...\n' >&2
       npm update
     fi
@@ -487,7 +488,7 @@ bd_map_entry_n() {
 }
 
 bd_map_fresh() {
-  verbose 1 'V: Generating fresh bd_map number...' >&2
+  verbose 2 'VV: Generating fresh bd_map number...' >&2
   bd_map_entry_n "$data/bd_map" | sort | awk 'BEGIN {max=-1} NF != 0 {if ($1>max+1) {exit}; max=$1} END {print max+1}'
 }
 
@@ -515,8 +516,7 @@ bd_map_get_n() {
 }
 
 bd_map_remove() {
-  grep -vF "$1"$'\t\t' "$data/bd_map" > "$data/bd_map.temp"
-  mv "$data/bd_map.temp" "$data/bd_map"
+  sed -e "\#$1\\t\\t#d" -i "$data/bd_map"
 }
 
 # From https://github.com/cloudflare/semver_bash , licensed under BSD-2-Clause
