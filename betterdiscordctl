@@ -3,7 +3,7 @@
 shopt -s dotglob extglob nullglob
 
 # Constants
-VERSION=1.2.1
+VERSION=1.3.0
 GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
 DISABLE_UPGRADE=
 
@@ -245,38 +245,33 @@ fi
 
 if [ "$cmd" != upgrade ]; then
   if [ -z "$discord" ]; then
-    while true; do
-      for flavor in "${flavors[@]// }"; do
-        verbose 2 "VV: Trying flavor '$flavor'" >&2
-        for discord in "$scan/discord${flavor,,}" "$scan/discord-${flavor,,}" \
-                       "$scan/Discord$flavor" "$scan/Discord-$flavor"; do
-          verbose 2 "VV: Checking $discord" >&2
-          if [ -d "$discord" ] ; then
-            verbose 2 "VV: Detected $discord" >&2
-            discord_config="$xdg_config/discord${flavor,,}"
-            if [ ! -d "$discord_config" ]; then
-              printf 'WARN: Config directory not found for %s (%s, %s).\n' "$flavor" "$discord" "$discord_config" >&2
-              continue 2
-            fi
-            verbose 1 "V: Using Discord at $discord" >&2
-            if [ -z "$modules" ]; then
-              modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
-              if ((! ${#modules[@]})); then
-                die 'ERROR: Discord modules directory not found.'
-              fi
-              modules="${modules[0]}"
-            else
-              # --modules
-              if [ ! -d "$modules" ]; then
-                die 'ERROR: Discord modules directory not found.'
-              fi
-            fi
-            break 3
+    verbose 2 "VV: Scanning $scan"
+    for flavor in "${flavors[@]// }"; do
+      verbose 2 "VV: Trying flavor '$flavor'" >&2
+      while read -r discord; do
+        if [ -d "$discord" ] ; then
+          verbose 1 "V: Using Discord at $discord" >&2
+          discord_config="$xdg_config/discord${flavor,,}"
+          if [ ! -d "$discord_config" ]; then
+            printf 'WARN: Config directory not found for Discord %s (%s, %s).\n' "$flavor" "$discord" "$discord_config" >&2
+            continue 2
           fi
-        done
-      done
+          if [ -z "$modules" ]; then
+            modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
+            if ((! ${#modules[@]})); then
+              die 'ERROR: Discord modules directory not found.'
+            fi
+            modules="${modules[0]}"
+          else
+            # --modules
+            if [ ! -d "$modules" ]; then
+              die 'ERROR: Discord modules directory not found.'
+            fi
+          fi
+          break 2
+        fi
+      done <<< $(find $scan -iregex ".*/discord\(-\|\)${flavor}$" -type d -print)
       die 'ERROR: Discord installation not found.'
-      break
     done
   else
     flavor="$flavors"
