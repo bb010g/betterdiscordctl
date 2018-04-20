@@ -54,6 +54,7 @@ Options:
 Commands:
   status (default)               Show the current Discord patch state.
   install                        Install BetterDiscord.
+  reinstall                      Reinstall BetterDiscord.
   update                         Update BetterDiscord.
   uninstall                      Uninstall BetterDiscord.
   upgrade                        Update betterdiscordctl.
@@ -86,7 +87,7 @@ die_non_empty() {
 
 while :; do
   case $1 in
-    status|install|update|uninstall|upgrade)
+    status|install|reinstall|update|uninstall|upgrade)
       cmd=$1
       ;;
     -V|--version)
@@ -298,6 +299,7 @@ fi
 
 bdc_status() {
   core_patched=no
+  index_mod=no
   linked_dir=no
   linked_repo=no
   if [ -d "$core/core" ]; then
@@ -313,13 +315,21 @@ bdc_status() {
       fi
     fi
   fi
+  if [ ! -f "$core/index.js" ]; then
+    index_mod='(missing) no'
+  else
+    if ! grep -q 'asar' "$core/index.js"; then
+      index_mod=yes
+    fi
+  fi
 
   printf 'Discord: %s
 Modules: %s
 Core patched: %s
+Index modified: %s
 Linked core directory: %s
 Linked core repository: %s\n' \
-    "$discord" "$modules" "$core_patched" "$linked_dir" "$linked_repo"
+    "$discord" "$modules" "$core_patched" "$index_mod" "$linked_dir" "$linked_repo"
 }
 
 bdc_install() {
@@ -328,25 +338,26 @@ bdc_install() {
   fi
 
   bd_patch
-
-  if [ ! "$bd" ]; then
-    bd="$data/bd/$(bd_map_add "$discord" "$bd_repo")"
-    if [ ! -d "$bd" ]; then
-      printf 'Cloning %s...\n' "$bd_repo" >&2
-      git clone "$bd_repo" -b "$bd_repo_branch" --single-branch "$bd"
-      verbose 1 "V: Cloned to $bd" >&2
-    fi
-  fi
-
-  if [ "$copy_bd" ]; then
-    verbose 1 'V: Copying core loader...' >&2
-    cp -r "$bd" "$core/core/node_modules/betterdiscord"
-  else
-    verbose 1 'V: Linking core loader...' >&2
-    ln -s "$bd" "$core/core/node_modules/betterdiscord"
-  fi
+  bd_loader
 
   printf 'Installed. (Restart Discord if necessary.)\n' >&2
+}
+
+bdc_reinstall() {
+  if [ ! -d "$core/core" ]; then
+    printf 'Not installed.\n' >&2
+    exit 1
+  fi
+
+  bdc_kill
+
+  verbose 1 'V: Removing old core folder.' >&2
+  rm -rf "$core/core"
+
+  bd_patch
+  bd_loader
+
+  printf 'Reinstalled.\n' >&2
 }
 
 bdc_update() {
@@ -379,20 +390,7 @@ bdc_uninstall() {
     exit 1
   fi
 
-  if [ -z "$flavor" ]; then
-    process_name='Discord'
-  else
-    if [ "${flavor,,}" == 'ptb' ]; then
-      process_name='DiscordPTB'
-    else
-      process_name='DiscordCanary'
-    fi
-  fi
-
-  printf 'Killing %s processes...\n' "$process_name" >&2
-  pkill -ex -SIGKILL $(ps ax | awk "BEGIN{IGNORECASE=1}/discord(-){0,1}${flavor}/{print \$5}" | rev | \
-                      cut -d '/' -f1 | rev | grep -iE "^discord(-){0,1}${flavor}$" | head -1) 2>/dev/null
-
+  bdc_kill
   bd_unpatch
 
   # Remove managed BD repo if applicable
@@ -415,8 +413,9 @@ bdc_uninstall() {
 bdc_upgrade() {
   if [ "$DISABLE_UPGRADE" ]; then
     die 'ERROR: Upgrading has been disabled.' \
-        'If you installed this from a package, your maintainer should keep betterdiscordctl up to date.'
+        'If you installed this from a package, its maintainer should keep it up to date.'
   fi
+
   github_version="$(curl -sN "$GITHUB_URL" | grep 'VERSION=' -m1 | cut -d '=' -f2)"
   if [ "${PIPESTATUS[0]}" -ne 0 ]; then
     die "ERROR: GitHub couldn't be reached to check the version."
@@ -428,7 +427,8 @@ bdc_upgrade() {
     if curl -Sso /usr/local/bin/betterdiscordctl "$GITHUB_URL"; then
       printf 'Successfully updated betterdiscordctl.\n' >&2
     else
-      die 'ERROR: Failed to update betterdiscordctl.' 'You may want to rerun this with sudo.'
+      die 'ERROR: Failed to update betterdiscordctl.' \
+          'You may want to rerun this command with sudo.'
     fi
   else
     if semverEQ "$github_version" "$VERSION"; then
@@ -460,6 +460,39 @@ bdc_asar() {
   fi
 }
 
+bdc_kill() {
+  if [ -z "$flavor" ]; then
+    process_name='Discord'
+  else
+    if [ "${flavor,,}" == 'ptb' ]; then
+      process_name='DiscordPTB'
+    else
+      process_name='DiscordCanary'
+    fi
+  fi
+  printf 'Killing %s processes...\n' "$process_name" >&2
+  pkill -ex -SIGKILL $(ps ax | awk "BEGIN{IGNORECASE=1}/discord(-){0,1}${flavor}/{print \$5}" | rev | \
+                      cut -d '/' -f1 | rev | grep -iE "^discord(-){0,1}${flavor}$" | head -1) 2>/dev/null
+}
+
+bd_loader() {
+  if [ ! "$bd" ]; then
+    bd="$data/bd/$(bd_map_add "$discord" "$bd_repo")"
+    if [ ! -d "$bd" ]; then
+      printf 'Cloning %s...\n' "$bd_repo" >&2
+      git clone "$bd_repo" -b "$bd_repo_branch" --single-branch "$bd"
+    fi
+  fi
+
+  if [ "$copy_bd" ]; then
+    verbose 1 'V: Copying core loader...' >&2
+    cp -r "$bd" "$core/core/node_modules/betterdiscord"
+  else
+    verbose 1 'V: Linking core loader...' >&2
+    ln -s "$bd" "$core/core/node_modules/betterdiscord"
+  fi
+}
+
 bd_patch() {
   verbose 1 'V: Unpacking core asar...' >&2
   bdc_asar e "$core/core.asar" "$core/core"
@@ -472,9 +505,9 @@ bd_patch() {
   verbose 1 'V: Patching core entry...' >&2
   sed -i "$core/index.js" -e "s/core\.asar'/core'/g"
   sed -i "$core/core/app/mainScreen.js" \
-    -e "/var *_url *=/ a var _betterDiscord = require('betterdiscord'); var _betterDiscord2;" \
-    -e "/mainWindow *= *new/ a _betterDiscord2 = new _betterDiscord.BetterDiscord(mainWindow);" \
-    -e '/nodeIntegration: false/d'
+      -e "/use strict/a var _betterDiscord = require('betterdiscord');\\nvar _betterDiscord2;" \
+      -e "/mainWindow = new/a \  _betterDiscord2 = new _betterDiscord.BetterDiscord(mainWindow);" \
+      -e "/nodeIntegration: false/d"
 }
 
 bd_unpatch() {
@@ -516,7 +549,7 @@ bd_map_get_n() {
 }
 
 bd_map_remove() {
-  sed -e "\#$1\\t\\t#d" -i "$data/bd_map"
+  sed -i "$data/bd_map" -e "\#$1\\t\\t#d"
 }
 
 # From https://github.com/cloudflare/semver_bash , licensed under BSD-2-Clause
@@ -601,6 +634,9 @@ case "$cmd" in
     ;;
   install)
     bdc_install
+    ;;
+  reinstall)
+    bdc_reinstall
     ;;
   update)
     bdc_update
