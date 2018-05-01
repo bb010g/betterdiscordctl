@@ -220,7 +220,8 @@ if [ "$snap" ]; then
     if ((! ${#modules[@]})); then
       die 'ERROR: Discord modules directory not found.'
     fi
-    modules="${modules[0]}"
+    modules="${modules[@]: -1}"
+    verbose 1 "V: Found modules in $modules"
   else
     die 'ERROR: Discord installation not found.'
   fi
@@ -240,7 +241,8 @@ if [ "$flatpak" ]; then
     if ((! ${#modules[@]})); then
       die 'ERROR: Discord modules directory not found.'
     fi
-    modules="${modules[0]}"
+    modules="${modules[@]: -1}"
+    verbose 1 "V: Found modules in $modules"
   else
     die 'ERROR: Discord installation not found.'
   fi
@@ -264,7 +266,8 @@ if [ "$cmd" != upgrade ]; then
             if ((! ${#modules[@]})); then
               die 'ERROR: Discord modules directory not found.'
             fi
-            modules="${modules[0]}"
+            modules="${modules[@]: -1}"
+            verbose 1 "V: Found modules in $modules"
           else
             # --modules
             if [ ! -d "$modules" ]; then
