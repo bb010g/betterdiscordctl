@@ -4,6 +4,7 @@ shopt -s dotglob extglob nullglob
 
 # Constants
 VERSION=1.3.0
+SOURCE="$(readlink -f "$BASH_SOURCE")"
 GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
 DISABLE_UPGRADE=
 
@@ -276,7 +277,7 @@ if [ "$cmd" != upgrade ]; then
           fi
           break 2
         fi
-      done <<< $(find $scan -iregex ".*/discord\(-\|\)${flavor}$" -type d -print)
+      done <<< $(find $scan -iregex ".*/discord\\(-\\|\\)${flavor}$" -type d -print)
       die 'ERROR: Discord installation not found.'
     done
   else
@@ -423,18 +424,20 @@ bdc_upgrade() {
   if [ "${PIPESTATUS[0]}" -ne 0 ]; then
     die "ERROR: GitHub couldn't be reached to check the version."
   fi
+  verbose 2 "VV: Script location: $SOURCE" >&2
   verbose 1 "V: Local version: $VERSION" >&2
   verbose 1 "V: GitHub version: $github_version" >&2
-  if semverGT "$github_version" "$VERSION"; then
+  semver_diff="$(semver_compare "$github_version" "$VERSION")"
+  if [[ $semver_diff -eq 1 ]]; then
     printf 'Downloading betterdiscordctl...\n' >&2
-    if curl -Sso /usr/local/bin/betterdiscordctl "$GITHUB_URL"; then
+    if curl -Sso "$SOURCE" "$GITHUB_URL"; then
       printf 'Successfully updated betterdiscordctl.\n' >&2
     else
       die 'ERROR: Failed to update betterdiscordctl.' \
           'You may want to rerun this command with sudo.'
     fi
   else
-    if semverEQ "$github_version" "$VERSION"; then
+    if [[ $semver_diff -eq 0 ]]; then
       printf 'betterdiscordctl is already the latest version (%s).\n' "$VERSION" >&2
     else
       printf 'Local version (%s) is higher than GitHub version (%s).\n' "$VERSION" "$github_version" >&2
@@ -506,10 +509,10 @@ bd_patch() {
   fi
 
   verbose 1 'V: Patching core entry...' >&2
-  sed -i "$core/index.js" -e "s/core\.asar'/core'/g"
+  sed -i "$core/index.js" -e "s/core\\.asar'/core'/g"
   sed -i "$core/core/app/mainScreen.js" \
       -e "/use strict/a var _betterDiscord = require('betterdiscord');\\nvar _betterDiscord2;" \
-      -e "/mainWindow = new/a \  _betterDiscord2 = new _betterDiscord.BetterDiscord(mainWindow);" \
+      -e "/mainWindow = new/a \\  _betterDiscord2 = new _betterDiscord.BetterDiscord(mainWindow);" \
       -e "/nodeIntegration: false/d"
 }
 
@@ -552,81 +555,41 @@ bd_map_get_n() {
 }
 
 bd_map_remove() {
-  sed -i "$data/bd_map" -e "\#$1\\t\\t#d"
+  sed -i "$data/bd_map" -e "\\%$1\\t\\t%d"
 }
 
-# From https://github.com/cloudflare/semver_bash , licensed under BSD-2-Clause
+# Source https://gist.github.com/Ariel-Rodriguez/9e3c2163f4644d7a389759b224bfe7f3
+# Author Ariel Rodriguez
+# License MIT
+###
+semver_compare() {
+  local version_a version_b pr_a pr_b
+  # strip word "v" and extract first subset version (x.y.z from x.y.z-foo.n)
+  version_a=$(echo "${1//v/}" | awk -F'-' '{print $1}')
+  version_b=$(echo "${2//v/}" | awk -F'-' '{print $1}')
 
-function semverParseInto() {
-  local RE='[^0-9]*\([0-9]*\)[.]\([0-9]*\)[.]\([0-9]*\)\([0-9A-Za-z-]*\)'
-  eval $2=`echo $1 | sed -e "s#$RE#\1#"` # MAJOR
-  eval $3=`echo $1 | sed -e "s#$RE#\2#"` # MINOR
-  eval $4=`echo $1 | sed -e "s#$RE#\3#"` # PATCH
-  eval $5=`echo $1 | sed -e "s#$RE#\4#"` # SPECIAL
-}
-
-function semverEQ() {
-  local MAJOR_A=0
-  local MINOR_A=0
-  local PATCH_A=0
-  local SPECIAL_A=0
-
-  local MAJOR_B=0
-  local MINOR_B=0
-  local PATCH_B=0
-  local SPECIAL_B=0
-
-  semverParseInto $1 MAJOR_A MINOR_A PATCH_A SPECIAL_A
-  semverParseInto $2 MAJOR_B MINOR_B PATCH_B SPECIAL_B
-
-  if [ $MAJOR_A -ne $MAJOR_B ]; then return 1; fi
-  if [ $MINOR_A -ne $MINOR_B ]; then return 1; fi
-  if [ $PATCH_A -ne $PATCH_B ]; then return 1; fi
-  if [[ "_$SPECIAL_A" != "_$SPECIAL_B" ]]; then return 1; fi
-  return 0
-}
-
-function semverLT() {
-  local MAJOR_A=0
-  local MINOR_A=0
-  local PATCH_A=0
-  local SPECIAL_A=0
-
-  local MAJOR_B=0
-  local MINOR_B=0
-  local PATCH_B=0
-  local SPECIAL_B=0
-
-  semverParseInto $1 MAJOR_A MINOR_A PATCH_A SPECIAL_A
-  semverParseInto $2 MAJOR_B MINOR_B PATCH_B SPECIAL_B
-
-  if [ $MAJOR_A -lt $MAJOR_B ]; then return 0; fi
-
-  if [[ $MAJOR_A -le $MAJOR_B  && $MINOR_A -lt $MINOR_B ]]; then return 0; fi
-
-  if [[ $MAJOR_A -le $MAJOR_B  && $MINOR_A -le $MINOR_B && $PATCH_A -lt $PATCH_B ]]; then return 0; fi
-
-  if [[ "_$SPECIAL_A"  == "_" ]] && [[ "_$SPECIAL_B"  == "_" ]] ; then return 1; fi
-  if [[ "_$SPECIAL_A"  == "_" ]] && [[ "_$SPECIAL_B"  != "_" ]] ; then return 1; fi
-  if [[ "_$SPECIAL_A"  != "_" ]] && [[ "_$SPECIAL_B"  == "_" ]] ; then return 0; fi
-
-  if [[ "_$SPECIAL_A" < "_$SPECIAL_B" ]]; then return 0; fi
-
-  return 1
-}
-
-function semverGT() {
-  semverEQ $1 $2
-  local EQ=$?
-
-  semverLT $1 $2
-  local LT=$?
-
-  if [ $EQ -ne 0 ] && [ $LT -ne 0 ]; then
-    return 0
-  else
-    return 1
+  if [ "$version_a" \= "$version_b" ]
+  then
+    # check for pre-release
+    # extract pre-release (-foo.n from x.y.z-foo.n)
+    pr_a=$(echo "$1" | awk -F'-' '{print $2}')
+    pr_b=$(echo "$2" | awk -F'-' '{print $2}')
+    # 0 when A is equal to B
+    [ "$pr_a" \= "$pr_b" ] && echo 0 && return 0
+    # 1 when A is not pre-release or (pre-release A exists and is greater than B's pre-release)
+    [ -z "$pr_a" ] || [ "$pr_a" \> "$pr_b" ] && [ -n "$pr_b" ] && echo 1 && return 0
+    # -1 when A is lower than B
+    echo -1 && return 0
   fi
+  arr_version_a=(${version_a//./ })
+  arr_version_b=(${version_b//./ })
+  cursor=0
+  # Iterate arrays from left to right and find the first difference
+  while [ "$([ "${arr_version_a[$cursor]}" -eq "${arr_version_b[$cursor]}" ] && [ $cursor -lt ${#arr_version_a[@]} ] && echo true)" == true ]
+  do
+    cursor=$((cursor+1))
+  done
+  [ "${arr_version_a[$cursor]}" -gt "${arr_version_b[$cursor]}" ] && echo 1 || echo -1
 }
 
 # Run command
