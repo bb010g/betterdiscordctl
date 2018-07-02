@@ -4,7 +4,7 @@ shopt -s dotglob extglob nullglob
 
 # Constants
 VERSION=1.3.0
-SOURCE="$(readlink -f "$BASH_SOURCE")"
+SOURCE="$(readlink -f "${BASH_SOURCE[0]}")"
 GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
 DISABLE_UPGRADE=
 
@@ -201,6 +201,16 @@ done
 mkdir -p "$data"
 [ ! -f "$data/bd_map" ] && touch "$data/bd_map"
 
+bdc_find_modules() {
+  local all_modules
+  all_modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
+  if ((! ${#all_modules[@]})); then
+    die 'ERROR: Discord modules directory not found.'
+  fi
+  modules="${all_modules[-1]}"
+  verbose 1 "V: Found modules in $modules"
+}
+
 if [ "$snap" ]; then
   desktop_file='/var/lib/snapd/desktop/applications/discord_discord.desktop'
   if [ -f $desktop_file ]; then
@@ -215,14 +225,11 @@ if [ "$snap" ]; then
   verbose 2 "VV: Checking $discord"
   if [ -d "$discord" ]; then
     verbose 1 "V: Using Discord at $discord"
+    # shellcheck disable=SC2016
+    # Expansion should happen inside snap's shell.
     xdg_config="$(snap run --shell discord <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}"')"
     discord_config="$xdg_config/discord"
-    modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
-    if ((! ${#modules[@]})); then
-      die 'ERROR: Discord modules directory not found.'
-    fi
-    modules="${modules[@]: -1}"
-    verbose 1 "V: Found modules in $modules"
+    bdc_find_modules
   else
     die 'ERROR: Discord installation not found.'
   fi
@@ -238,12 +245,7 @@ if [ "$flatpak" ]; then
     if [ ! -d "$discord_config" ]; then
       printf 'WARN: Config directory not found for Discord (%s, %s).\n' "$discord" "$discord_config" >&2
     fi
-    modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
-    if ((! ${#modules[@]})); then
-      die 'ERROR: Discord modules directory not found.'
-    fi
-    modules="${modules[@]: -1}"
-    verbose 1 "V: Found modules in $modules"
+    bdc_find_modules
   else
     die 'ERROR: Discord installation not found.'
   fi
@@ -254,7 +256,7 @@ if [ "$cmd" != upgrade ]; then
     verbose 2 "VV: Scanning $scan"
     for flavor in "${flavors[@]// }"; do
       verbose 2 "VV: Trying flavor '$flavor'" >&2
-      while read -r discord; do
+      while read -rd '' discord; do
         if [ -d "$discord" ] ; then
           verbose 1 "V: Using Discord at $discord" >&2
           discord_config="$xdg_config/discord${flavor,,}"
@@ -263,12 +265,7 @@ if [ "$cmd" != upgrade ]; then
             continue 2
           fi
           if [ -z "$modules" ]; then
-            modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
-            if ((! ${#modules[@]})); then
-              die 'ERROR: Discord modules directory not found.'
-            fi
-            modules="${modules[@]: -1}"
-            verbose 1 "V: Found modules in $modules"
+              bdc_find_modules
           else
             # --modules
             if [ ! -d "$modules" ]; then
@@ -277,7 +274,7 @@ if [ "$cmd" != upgrade ]; then
           fi
           break 2
         fi
-      done <<< $(find $scan -iregex ".*/discord\\(-\\|\\)${flavor}$" -type d -print)
+      done < <(find "$scan" -iregex ".*/discord\\(-\\|\\)${flavor}$" -type d -print0)
       die 'ERROR: Discord installation not found.'
     done
   else
@@ -310,9 +307,9 @@ bdc_status() {
     core_patched=yes
     if [ -h "$core/core/node_modules/betterdiscord" ]; then
       linked_dir="$(readlink "$core/core/node_modules/betterdiscord")"
-      if [ -d "$core/core/node_modules/betterdiscord" ]; then
-        pushd "$core/core/node_modules/betterdiscord" >/dev/null
+      if pushd "$core/core/node_modules/betterdiscord" >/dev/null; then
         linked_repo="$(git remote get-url origin 2>/dev/null || printf 'no\n')"
+        # shellcheck disable=SC2164
         popd >/dev/null
       else
         linked_dir="(broken link) $linked_dir"
@@ -370,14 +367,13 @@ bdc_update() {
     exit 1
   fi
 
-  if [ ! -d "$core/core/node_modules/betterdiscord" ]; then
+  if ! pushd "$core/core/node_modules/betterdiscord" >/dev/null; then
     if [ -h "$core/core/node_modules/betterdiscord" ]; then
       die 'ERROR: Core BetterDiscord symbolic link is broken.'
     else
       die 'ERROR: Core BetterDiscord location is not a directory.'
     fi
   fi
-  pushd "$core/core/node_modules/betterdiscord" >/dev/null
   if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     printf 'Updating Git repository...\n' >&2
     git fetch origin
@@ -385,6 +381,7 @@ bdc_update() {
   else
     printf 'WARN: No Git repository found.\n' >&2
   fi
+  # shellcheck disable=SC2164
   popd >/dev/null
 }
 
@@ -400,7 +397,7 @@ bdc_uninstall() {
   # Remove managed BD repo if applicable
   bd_n=$(bd_map_get_dir "$discord" | bd_map_entry_n)
   bd_map_remove "$discord"
-  if [ -z "$(bd_map_get_n $bd_n)" ]; then
+  if [ -z "$(bd_map_get_n "$bd_n")" ]; then
     verbose 2 "VV: Removing $data/bd/$bd_n"
     rm -rf "$data/bd/$bd_n"
   fi
@@ -451,7 +448,8 @@ bdc_asar() {
   if [ "$global_asar" ]; then
     asar "$@"
   else
-    mkdir -p "$data/asar"
+    mkdir -p "$data/asar" || die "Couldn't create $data/asar."
+    # shellcheck disable=SC2164
     pushd "$data/asar" >/dev/null
     if [ ! -d "$data/asar/node_modules" ]; then
       printf '{"devDependencies":{"asar": "*"}}\n' > package.json
@@ -461,12 +459,14 @@ bdc_asar() {
       printf 'Updating asar...\n' >&2
       npm update
     fi
+    # shellcheck disable=SC2164
     popd >/dev/null
     "$data/asar/node_modules/asar/bin/asar.js" "$@"
   fi
 }
 
 bdc_kill() {
+  local process_name discord_processes
   if [ -z "$flavor" ]; then
     process_name='Discord'
   else
@@ -477,8 +477,10 @@ bdc_kill() {
     fi
   fi
   printf 'Killing %s processes...\n' "$process_name" >&2
-  pkill -ex -SIGKILL $(ps ax | awk "BEGIN{IGNORECASE=1}/discord(-){0,1}${flavor}/{print \$5}" | rev | \
-                      cut -d '/' -f1 | rev | grep -iE "^discord(-){0,1}${flavor}$" | head -1) 2>/dev/null
+  mapfile -t discord_processes < \
+    <(ps ax | awk "BEGIN{IGNORECASE=1}/discord(-){0,1}${flavor}/{print \$5}" | rev | \
+      cut -d '/' -f1 | rev | grep -iE "^discord(-){0,1}${flavor}$" | head -1)
+  pkill -ex -SIGKILL "${discord_processes[@]}" 2>/dev/null
 }
 
 bd_loader() {
@@ -538,8 +540,8 @@ bd_map_add() {
   else
     num=$(bd_map_fresh)
   fi
-  printf '%s\t\t%s\t%s\n' "$1" "$2" $num >> "$data/bd_map"
-  printf '%s\n' $num
+  printf '%s\t\t%s\t%s\n' "$1" "$2" "$num" >> "$data/bd_map"
+  printf '%s\n' "$num"
 }
 
 bd_map_get_dir() {
@@ -558,51 +560,36 @@ bd_map_remove() {
   sed -i "$data/bd_map" -e "\\%$1\\t\\t%d"
 }
 
-# Source https://gist.github.com/Ariel-Rodriguez/9e3c2163f4644d7a389759b224bfe7f3
-# Author Ariel Rodriguez
-# License MIT
-###
+# Based on https://gist.github.com/Ariel-Rodriguez/9e3c2163f4644d7a389759b224bfe7f3
+# by Ariel Rodriguez, licensed under MIT
+# Bash-friendly rewrite by bb010g
 semver_compare() {
-  local orig_a orig_b version_a version_b
-  orig_a="$(grep -Eo '^[0-9\.]*' <<< "${1#v}")"
-  orig_b="$(grep -Eo '^[0-9\.]*' <<< "${2#v}")"
-  version_a="$orig_a"; version_b="$orig_b"
-  while [ ${#version_a} -lt ${#version_b} ]; do
-    version_a+='.0'
-  done
-  while [ ${#version_b} -lt ${#version_a} ]; do
-    version_b+='.0'
-  done
+  local version_a version_b pr_a pr_b i
+  # strip word "v" and extract first subset version (x.y.z from x.y.z-foo.n)
+  version_a=${1#v}; version_a=${version_a%%-*}
+  version_b=${2#v}; version_b=${version_b%%-*}
 
-  if [[ "$version_a" == "$version_b" ]]; then
-    local spec_a spec_b spec_ch_a spec_ch_b spec_num_a spec_num_b
-    spec_a="$(sed -e "s/^${orig_a}[-\\.\\+~]*//" <<< "${1#v}")"
-    spec_b="$(sed -e "s/^${orig_b}[-\\.\\+~]*//" <<< "${2#v}")"
-    [[ "$spec_a" == "$spec_b" ]] && echo 0 && return 0
-    [ -z "${spec_a}" ] && echo 1 && return 0
-    [ -z "${spec_b}" ] && echo -1 && return 0
-    spec_ch_a="$(grep -Eo '^[A-Za-z]*' <<< "$spec_a")"
-    spec_ch_b="$(grep -Eo '^[A-Za-z]*' <<< "$spec_b")"
-    [[ "$spec_ch_a" > "$spec_ch_b" ]] && echo 1 && return 0
-    [[ "$spec_ch_a" < "$spec_ch_b" ]] && echo -1 && return 0
-    spec_num_a="$(sed -e "s/^${spec_ch_a}[\\.-]*//" <<< "$spec_a")"
-    spec_num_b="$(sed -e "s/^${spec_ch_b}[\\.-]*//" <<< "$spec_b")"
-    semver_compare "$spec_num_a" "$spec_num_b" && return 0
+  if [ "$version_a" \= "$version_b" ]
+  then
+    # check for pre-release
+    # extract pre-release (-foo.n from x.y.z-foo.n)
+    pr_a=${1#*-}; pr_a=${pr_a%%-*}
+    pr_b=${2#*-}; pr_b=${pr_b%%-*}
+    # 0 when A is equal to B
+    [ "$pr_a" \= "$pr_b" ] && echo 0 && return 0
+    # 1 when A is not pre-release or (pre-release A exists and is greater than B's pre-release)
+    [ -z "$pr_a" ] || [ "$pr_a" \> "$pr_b" ] && [ -n "$pr_b" ] && echo 1 && return 0
+    # -1 when A is lower than B
+    echo -1 && return 0
   fi
+  IFS=. read -ra arr_version_a <<< "$version_a"
+  IFS=. read -ra arr_version_b <<< "$version_b"
 
-  local arr_version_a arr_version_b index
-  arr_version_a=(${version_a//./ })
-  arr_version_b=(${version_b//./ })
-  index=0
-  while [ $index -lt ${#arr_version_a[@]} ] && \
-    [ "${arr_version_a[$index]}" -eq "${arr_version_b[$index]}" ]; do
-    if [ $((++index)) -eq ${#arr_version_a[@]} ]; then
-      echo 0 && return 0
-    fi
+  i=0
+  for i in "${!arr_version_a[@]}"; do
+    if [[ "${arr_version_a[i]}" != "${arr_version_b[i]}" ]]; then break; fi
   done
-  [ "${arr_version_a[$index]}" -gt "${arr_version_b[$index]}" ] \
-    && echo 1 || echo -1
-  return 0
+  [[ "${arr_version_a[i]}" -gt "${arr_version_b[i]}" ]] && echo 1 || echo -1
 }
 
 # Run command
