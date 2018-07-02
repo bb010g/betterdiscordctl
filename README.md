@@ -8,6 +8,7 @@ A manager for BetterDiscord on Linux.
 
 - Arch: https://aur.archlinux.org/packages/betterdiscordctl-git
 - Ubuntu: https://launchpad.net/~chronobserver/+archive/ubuntu/betterdiscordctl
+- Fedora: https://copr.fedorainfracloud.org/coprs/observeroftime/betterdiscordctl
 
 ### Manual
 
@@ -113,6 +114,10 @@ Displays information about your current BetterDiscord setup.
 
 Installs BetterDiscord, managing what's necessary by default.
 
+### `reinstall`
+
+Reinstalls BetterDiscord, removing the old files.
+
 ### `update`
 
 Updates BetterDiscord, updating your local repository if present
@@ -137,21 +142,24 @@ Updates `betterdiscordctl` to the latest version available on GitHub.
 
 * `betterdiscordctl status -s /usr/share`
 
-  Tells you the status of the default Discord install in `/usr/share`, instead
+  Shows the status of the default Discord install in `/usr/share`, instead
   of `/opt`.
 
 * `betterdiscordctl install -f PTB`
 
   Installs BetterDiscord to the PTB flavor, instead of the default.
 
-* `betterdiscordctl update -f Canary`
+* `betterdiscordctl reinstall -f Canary`
 
-  Updates the existing Discord Canary install of BetterDiscord.
+  Reinstalls BetterDiscord to Discord Canary.
+
+* `betterdiscordctl update --flatpak`
+
+  Updates BetterDiscord for a Discord installed via Flatpak.
 
 * `betterdiscordctl uninstall --snap`
 
-  Uninstalls BetterDiscord for a Discord installed via Snap, instead of
-  traditional packages.
+  Uninstalls BetterDiscord for a Discord installed via Snap.
 
 ## Files
 
