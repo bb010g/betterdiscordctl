@@ -185,5 +185,5 @@ Updates `betterdiscordctl` to the latest version available on GitHub.
 
   * With `--snap`, this will fall back to `$SNAP_USER_DATA/.config`.
 
-  * When `--flatpack` is used, this will fall back to
+  * With `--flatpak`, this will fall back to
     `~/.var/app/com.discordapp.Discord/config/BetterDiscord`.

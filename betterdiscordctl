@@ -3,7 +3,7 @@
 shopt -s dotglob extglob nullglob
 
 # Constants
-VERSION=1.4.0
+VERSION=1.4.1
 SOURCE="$(readlink -f "${BASH_SOURCE[0]}")"
 GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
 DISABLE_UPGRADE=
@@ -256,7 +256,7 @@ if [ "$cmd" != upgrade ]; then
     verbose 2 "VV: Scanning $scan"
     for flavor in "${flavors[@]// }"; do
       verbose 2 "VV: Trying flavor '$flavor'" >&2
-      while read -rd '' discord; do
+      while read -r discord; do
         if [ -d "$discord" ] ; then
           verbose 1 "V: Using Discord at $discord" >&2
           discord_config="$xdg_config/discord${flavor,,}"
@@ -265,7 +265,7 @@ if [ "$cmd" != upgrade ]; then
             continue 2
           fi
           if [ -z "$modules" ]; then
-              bdc_find_modules
+            bdc_find_modules
           else
             # --modules
             if [ ! -d "$modules" ]; then
@@ -274,7 +274,7 @@ if [ "$cmd" != upgrade ]; then
           fi
           break 2
         fi
-      done < <(find "$scan" -iregex ".*/discord\\(-\\|\\)${flavor}$" -type d -print0)
+      done < <(find "$scan" -iregex ".*/discord\\(-\\|\\)${flavor}$" -type d -print)
       die 'ERROR: Discord installation not found.'
     done
   else
@@ -466,7 +466,7 @@ bdc_asar() {
 }
 
 bdc_kill() {
-  local process_name discord_processes
+  local process_name
   if [ -z "$flavor" ]; then
     process_name='Discord'
   else
@@ -477,10 +477,8 @@ bdc_kill() {
     fi
   fi
   printf 'Killing %s processes...\n' "$process_name" >&2
-  mapfile -t discord_processes < \
-    <(ps ax | awk "BEGIN{IGNORECASE=1}/discord(-){0,1}${flavor}/{print \$5}" | rev | \
-      cut -d '/' -f1 | rev | grep -iE "^discord(-){0,1}${flavor}$" | head -1)
-  pkill -ex -SIGKILL "${discord_processes[@]}" 2>/dev/null
+  pkill -ex -SIGKILL "$(ps ax | awk "BEGIN{IGNORECASE=1}/discord(-){0,1}${flavor}/{print \$5}" | rev | \
+                        cut -d '/' -f1 | rev | grep -iE "^discord(-){0,1}${flavor}$" | head -1)" 2>/dev/null
 }
 
 bd_loader() {
