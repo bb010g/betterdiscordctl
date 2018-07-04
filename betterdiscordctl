@@ -256,7 +256,7 @@ if [ "$cmd" != upgrade ]; then
     verbose 2 "VV: Scanning $scan"
     for flavor in "${flavors[@]// }"; do
       verbose 2 "VV: Trying flavor '$flavor'" >&2
-      while read -r discord; do
+      while read -rd '' discord; do
         if [ -d "$discord" ] ; then
           verbose 1 "V: Using Discord at $discord" >&2
           discord_config="$xdg_config/discord${flavor,,}"
@@ -274,7 +274,7 @@ if [ "$cmd" != upgrade ]; then
           fi
           break 2
         fi
-      done < <(find "$scan" -iregex ".*/discord\\(-\\|\\)${flavor}$" -type d -print)
+      done < <(find "$scan" -iregex ".*/discord\\(-\\|\\)${flavor}$" -type d -print0)
       die 'ERROR: Discord installation not found.'
     done
   else
