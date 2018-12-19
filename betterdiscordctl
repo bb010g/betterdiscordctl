@@ -275,8 +275,10 @@ if [ "$cmd" != upgrade ]; then
           break 2
         fi
       done < <(find "$scan" -iregex ".*/discord\\(-\\|\\)${flavor}$" -type d -print0)
-      die 'ERROR: Discord installation not found.'
     done
+    if [ -z "$discord" ]; then
+      die 'ERROR: Discord installation not found.'
+    fi
   else
     flavor="$flavors"
     # --discord and --modules
