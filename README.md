@@ -22,7 +22,7 @@ distro's [package manager][node-packages], you can
 [node-download]: https://nodejs.org/en/download/
 
 You can then install as follows (`#` means that a command needs root, which you
-can get by prefixing a command with `sudo`):
+can get by prefixing it with `sudo`):
 
 ```
 $ curl -O https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl

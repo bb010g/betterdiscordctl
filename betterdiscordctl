@@ -4,7 +4,7 @@ set -ueo pipefail
 shopt -s dotglob extglob nullglob
 
 # Constants
-VERSION=1.4.0
+VERSION=1.5.0
 SOURCE="$(readlink -f "${BASH_SOURCE[0]}")"
 GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
 DISABLE_UPGRADE=
@@ -27,12 +27,13 @@ flatpak=
 # Variables
 flavor=
 core=
-xdg_config="${XDG_CONFIG_DIR:-$HOME/.config}"
+xdg_config="${XDG_CONFIG_HOME:-$HOME/.config}"
 data="${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl"
 
 show_help() {
-  printf 'Usage: %s [COMMAND] [OPTION...]\n\n' "${0##*/}"
   cat << EOF
+Usage: ${0##*/} [COMMAND] [OPTION...]
+
 Options:
   -V, --version                  Display version info and exit
   -h, --help                     Display this help message and exit
@@ -217,7 +218,7 @@ bdc_find_modules() {
 if [[ $snap ]]; then
   desktop_file='/var/lib/snapd/desktop/applications/discord_discord.desktop'
   if [[ -f $desktop_file ]]; then
-    discord=$(grep Icon $desktop_file | sed 's/Icon=//g; s/\/discord.png//g')
+    discord=$(sed -n 's/Icon=\(.*\)\/discord.png/\1/p' $desktop_file)
   else
     if [[ -d /snap/discord ]]; then
       discord=$(readlink -f /snap/discord/current/usr/share/discord)
@@ -239,7 +240,7 @@ if [[ $snap ]]; then
 fi
 
 if [[ $flatpak ]]; then
-  flatpak_location="$(readlink -f "$(flatpak info com.discordapp.Discord | grep 'Location:' | sed 's/Location: //g')")"
+  flatpak_location="$(readlink -f "$(flatpak info com.discordapp.Discord | sed -n 's/Location: //p')")"
   discord="$flatpak_location/files/extra"
   verbose 2 "VV: Checking $discord" >&2
   if [[ -d $discord ]]; then
@@ -299,7 +300,7 @@ if [[ $cmd != upgrade ]]; then
   fi
   core="$modules/discord_desktop_core"
   if [[ ! -d $core ]]; then
-    die "ERROR: Directory 'discord_desktop_core' not found in '%s'" "$(readlink -f "$modules")"
+    die "ERROR: Directory 'discord_desktop_core' not found in $(readlink -f "$modules")"
   fi
 fi
 
@@ -424,7 +425,7 @@ bdc_upgrade() {
         'If you installed this from a package, its maintainer should keep it up to date.'
   fi
 
-  github_version="$(curl -sN "$GITHUB_URL" | grep 'VERSION=' -m1 | cut -d '=' -f2)"
+  github_version="$(curl -sN "$GITHUB_URL" | sed -n 's/^VERSION=//p')"
   if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
     die "ERROR: GitHub couldn't be reached to check the version."
   fi
@@ -455,16 +456,16 @@ bdc_asar() {
   if [[ $global_asar ]]; then
     asar "$@"
   else
-    mkdir -p "$data/asar" || die "Couldn't create %s/asar." "$data"
+    mkdir -p "$data/asar" || die "Couldn't create $data/asar."
     # shellcheck disable=SC2164
     pushd "$data/asar" >/dev/null
     if [[ ! -d $data/asar/node_modules ]]; then
-      printf '{"devDependencies":{"asar": "*"}}\n' > package.json
+      printf '{"devDependencies":{"asar":"*"}}\n' > package.json
       printf 'Installing asar...\n' >&2
-      npm install || die "Couldnt install %s/asar." "$data"
+      npm install || die "Couldn't install $data/asar."
     else
       printf 'Updating asar...\n' >&2
-      npm update || die "Couldnt update %s/asar." "$data"
+      npm update || die "Couldn't update $data/asar."
     fi
     # shellcheck disable=SC2164
     popd >/dev/null
@@ -478,7 +479,7 @@ bdc_kill() {
     process_name+=" $flavor"
   fi
   printf 'Killing %s processes...\n' "$process_name" >&2
-  pkill -xi -SIGTERM "discord-?$flavor" || printf 'No active processes found.\n' >&2
+  pkill -exi -KILL "discord-?$flavor" || printf 'No active processes found.\n' >&2
 }
 
 bd_loader() {
@@ -486,7 +487,7 @@ bd_loader() {
     bd="$data/bd/$(bd_map_add "$discord" "$bd_repo")"
     if [[ ! -d $bd ]]; then
       printf 'Cloning %s...\n' "$bd_repo" >&2
-      git clone "$bd_repo" -b "$bd_repo_branch" --single-branch "$bd"
+      git clone "$bd_repo" -b "$bd_repo_branch" --depth=1 --single-branch "$bd"
     fi
   fi
 
@@ -664,6 +665,6 @@ case "$cmd" in
     bdc_upgrade
     ;;
   *)
-    die "ERROR: Unknown command: %s" "$cmd"
+    die "ERROR: Unknown command: $cmd"
     ;;
 esac
