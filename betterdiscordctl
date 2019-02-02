@@ -38,7 +38,7 @@ Options:
   -V, --version                  Display version info and exit
   -h, --help                     Display this help message and exit
   -v, --verbose                  Increase verbosity
-  -s, --scan=DIRECTORY           Comma-separated list of directories to scan for
+  -s, --scan=DIRECTORIES         Comma-separated list of directories to scan for
                                  a Discord installation.
                                  (default '/opt,/usr/share')
   -f, --flavors=FLAVORS          Comma-separated list of Discord flavors
@@ -240,12 +240,15 @@ if [[ $snap ]]; then
 fi
 
 if [[ $flatpak ]]; then
-  flatpak_location="$(readlink -f "$(flatpak info com.discordapp.Discord | sed -n 's/Location: //p')")"
+  flatpak_location="$(flatpak info --show-location com.discordapp.Discord)"
   discord="$flatpak_location/files/extra"
   verbose 2 "VV: Checking $discord" >&2
   if [[ -d $discord ]]; then
     verbose 1 "V: Using Discord at $discord" >&2
-    discord_config="$HOME/.var/app/com.discordapp.Discord/config/discord"
+    # shellcheck disable=SC2016
+    # Expansion should happen inside flatpak's shell.
+    flatpak_config="$(flatpak run --command=sh com.discordapp.Discord -c 'echo $XDG_CONFIG_HOME')"
+    discord_config="${flatpak_config:-$HOME/.var/app/com.discordapp.Discord/config}/discord"
     if [[ ! -d $discord_config ]]; then
       printf 'WARN: Config directory not found for Discord (%s, %s).\n' "$discord" "$discord_config" >&2
     fi
