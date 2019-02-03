@@ -1,9 +1,10 @@
 #!/bin/bash
 
+set -ueo pipefail
 shopt -s dotglob extglob nullglob
 
 # Constants
-VERSION=1.4.1
+VERSION=1.5.0
 SOURCE="$(readlink -f "${BASH_SOURCE[0]}")"
 GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
 DISABLE_UPGRADE=
@@ -11,8 +12,8 @@ DISABLE_UPGRADE=
 # Options
 cmd=status
 verbosity=0
-scan=/opt
-flavors=('' Canary PTB)
+scan=(/opt /usr/share)
+flavors=('' canary ptb)
 discord=
 modules=
 bd_repo='https://github.com/rauenzi/BetterDiscordApp'
@@ -26,20 +27,22 @@ flatpak=
 # Variables
 flavor=
 core=
-xdg_config="${XDG_CONFIG_DIR:-$HOME/.config}"
+xdg_config="${XDG_CONFIG_HOME:-$HOME/.config}"
 data="${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl"
 
 show_help() {
-  printf 'Usage: %s [COMMAND] [OPTION...]\n\n' "${0##*/}"
   cat << EOF
+Usage: ${0##*/} [COMMAND] [OPTION...]
+
 Options:
   -V, --version                  Display version info and exit
   -h, --help                     Display this help message and exit
   -v, --verbose                  Increase verbosity
-  -s, --scan=DIRECTORY           Directory to scan for Discord installation
-                                 (default '/opt')
+  -s, --scan=DIRECTORIES         Comma-separated list of directories to scan for
+                                 a Discord installation.
+                                 (default '/opt,/usr/share')
   -f, --flavors=FLAVORS          Comma-separated list of Discord flavors
-                                 (default ',Canary,PTB')
+                                 (default ',canary,ptb')
   -d, --discord=DIRECTORY        Use specified Discord directory
                                  (requires --modules)
   -m, --modules=DIRECTORY        Use specified Discord modules directory
@@ -87,6 +90,7 @@ die_non_empty() {
 
 
 while :; do
+  if [[ -z ${1+x} ]]; then break; fi
   case $1 in
     status|install|reinstall|update|uninstall|upgrade)
       cmd=$1
@@ -102,17 +106,17 @@ while :; do
       ((++verbosity))
       ;;
     -s|--scan)
-      if [ "$2" ]; then scan=$2; shift
+      if [[ ${2+x} ]]; then IFS=',' read -ra scan <<< "$2"; shift
       else die_non_empty '--scan'; fi
       ;;
     --scan=?*)
-      scan=${1#*=}
+      IFS=',' read -ra scan <<< "${1#*=}"
       ;;
     --scan=)
       die_non_empty '--scan'
       ;;
     -f|--flavors)
-      if [ "$2" ]; then IFS=',' read -ra flavors <<< "$2"; shift
+      if [[ ${2+x} ]]; then IFS=',' read -ra flavors <<< "$2"; shift
       else die_non_empty '--flavors'; fi
       ;;
     --flavors=?*)
@@ -122,7 +126,7 @@ while :; do
       die_non_empty '--flavors'
       ;;
     -d|--discord)
-      if [ "$2" ]; then discord=$2; shift
+      if [[ ${2+x} ]]; then discord=$2; shift
       else die_non_empty '--discord'; fi
       ;;
     --discord=?*)
@@ -132,7 +136,7 @@ while :; do
       die_non_empty '--discord'
       ;;
     -m|--modules)
-      if [ "$2" ]; then modules=$2; shift
+      if [[ ${2+x} ]]; then modules=$2; shift
       else die_non_empty '--modules'; fi
       ;;
     --modules=?*)
@@ -142,7 +146,7 @@ while :; do
       die_non_empty '--modules'
       ;;
     --bd-repo-branch)
-      if [ "$2" ]; then bd_repo_branch=$2; shift
+      if [[ ${2+x} ]]; then bd_repo_branch=$2; shift
       else die_non_empty '--bd-repo-branch'; fi
       ;;
     --bd-repo-branch=?*)
@@ -152,7 +156,7 @@ while :; do
       die_non_empty '--bd-repo-branch'
       ;;
     -r|--bd-repo)
-      if [ "$2" ]; then bd_repo=$2; shift
+      if [[ ${2+x} ]]; then bd_repo=$2; shift
       else die_non_empty '--bd-repo'; fi
       ;;
     --bd-repo=?*)
@@ -162,7 +166,7 @@ while :; do
       die_non_empty '--bd-repo'
       ;;
     -b|--betterdiscord)
-      if [ "$2" ]; then bd=$2; shift
+      if [[ ${2+x} ]]; then bd=$2; shift
       else die_non_empty '--betterdiscord'; fi
       ;;
     --betterdiscord=?*)
@@ -199,10 +203,10 @@ while :; do
 done
 
 mkdir -p "$data"
-[ ! -f "$data/bd_map" ] && touch "$data/bd_map"
+[[ ! -f $data/bd_map ]] && touch "$data/bd_map"
 
 bdc_find_modules() {
-  local all_modules
+  declare -a all_modules
   all_modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
   if ((! ${#all_modules[@]})); then
     die 'ERROR: Discord modules directory not found.'
@@ -211,19 +215,19 @@ bdc_find_modules() {
   verbose 1 "V: Found modules in $modules"
 }
 
-if [ "$snap" ]; then
+if [[ $snap ]]; then
   desktop_file='/var/lib/snapd/desktop/applications/discord_discord.desktop'
-  if [ -f $desktop_file ]; then
-    discord=$(grep Icon $desktop_file | sed 's/Icon=//g; s/\/discord.png//g')
+  if [[ -f $desktop_file ]]; then
+    discord=$(sed -n 's/Icon=\(.*\)\/discord.png/\1/p' $desktop_file)
   else
-    if [ -d '/snap/discord' ]; then
+    if [[ -d /snap/discord ]]; then
       discord=$(readlink -f /snap/discord/current/usr/share/discord)
     else
       discord=$(readlink -f /var/lib/snapd/snap/discord/current/usr/share/discord)
     fi
   fi
   verbose 2 "VV: Checking $discord"
-  if [ -d "$discord" ]; then
+  if [[ -d $discord ]]; then
     verbose 1 "V: Using Discord at $discord"
     # shellcheck disable=SC2016
     # Expansion should happen inside snap's shell.
@@ -235,14 +239,17 @@ if [ "$snap" ]; then
   fi
 fi
 
-if [ "$flatpak" ]; then
-  flatpak_location="$(readlink -f "$(flatpak info com.discordapp.Discord | grep 'Location:' | sed 's/Location: //g')")"
+if [[ $flatpak ]]; then
+  flatpak_location="$(flatpak info --show-location com.discordapp.Discord)"
   discord="$flatpak_location/files/extra"
   verbose 2 "VV: Checking $discord" >&2
-  if [ -d "$discord" ]; then
+  if [[ -d $discord ]]; then
     verbose 1 "V: Using Discord at $discord" >&2
-    discord_config="$HOME/.var/app/com.discordapp.Discord/config/discord"
-    if [ ! -d "$discord_config" ]; then
+    # shellcheck disable=SC2016
+    # Expansion should happen inside flatpak's shell.
+    flatpak_config="$(flatpak run --command=sh com.discordapp.Discord -c 'echo $XDG_CONFIG_HOME')"
+    discord_config="${flatpak_config:-$HOME/.var/app/com.discordapp.Discord/config}/discord"
+    if [[ ! -d $discord_config ]]; then
       printf 'WARN: Config directory not found for Discord (%s, %s).\n' "$discord" "$discord_config" >&2
     fi
     bdc_find_modules
@@ -251,48 +258,52 @@ if [ "$flatpak" ]; then
   fi
 fi
 
-if [ "$cmd" != upgrade ]; then
-  if [ -z "$discord" ]; then
-    verbose 2 "VV: Scanning $scan"
-    for flavor in "${flavors[@]// }"; do
-      verbose 2 "VV: Trying flavor '$flavor'" >&2
-      while read -rd '' discord; do
-        if [ -d "$discord" ] ; then
-          verbose 1 "V: Using Discord at $discord" >&2
-          discord_config="$xdg_config/discord${flavor,,}"
-          if [ ! -d "$discord_config" ]; then
-            printf 'WARN: Config directory not found for Discord %s (%s, %s).\n' "$flavor" "$discord" "$discord_config" >&2
-            continue 2
-          fi
-          if [ -z "$modules" ]; then
-            bdc_find_modules
-          else
-            # --modules
-            if [ ! -d "$modules" ]; then
-              die 'ERROR: Discord modules directory not found.'
+if [[ $cmd != upgrade ]]; then
+  if [[ -z $discord ]]; then
+    for scandir in "${scan[@]}"; do
+      verbose 2 "VV: Scanning $scandir"
+      for flavor in "${flavors[@]}"; do
+        verbose 2 "VV: Trying flavor '$flavor'" >&2
+        shopt -s nocaseglob
+        for discord in "$scan"/discord?(-)"$flavor"; do
+          shopt -u nocaseglob
+          if [[ -d $discord ]]; then
+            verbose 1 "V: Using Discord at $discord" >&2
+            discord_config="$xdg_config/discord${flavor,,}"
+            if [[ ! -d $discord_config ]]; then
+              printf 'WARN: Config directory not found for Discord %s (%s, %s).\n' "$flavor" "$discord" "$discord_config" >&2
+              continue 2
             fi
+            if [[ -z $modules ]]; then
+                bdc_find_modules
+            else
+              # --modules
+              if [[ ! -d $modules ]]; then
+                die 'ERROR: Discord modules directory not found.'
+              fi
+            fi
+            break 3
           fi
-          break 2
-        fi
-      done < <(find "$scan" -iregex ".*/discord\\(-\\|\\)${flavor}$" -type d -print0)
+        done
+      done
       die 'ERROR: Discord installation not found.'
     done
   else
     flavor="$flavors"
     # --discord and --modules
-    if [ -z "$modules" ]; then
+    if [[ -z $modules ]]; then
       die_with_help 'ERROR: "--discord" requires "--modules" to also be set.'
     fi
-    if [ ! -d "$discord" ]; then
+    if [[ ! -d $discord ]]; then
       die 'ERROR: Discord installation not found.'
     fi
-    if [ ! -d "$modules" ]; then
+    if [[ ! -d $modules ]]; then
       die 'ERROR: Discord modules directory not found.'
     fi
   fi
   core="$modules/discord_desktop_core"
-  if [ ! -d "$core" ]; then
-    die "ERROR: Directory 'discord_desktop_core' not found in '$(readlink -f "$modules")'"
+  if [[ ! -d $core ]]; then
+    die "ERROR: Directory 'discord_desktop_core' not found in $(readlink -f "$modules")"
   fi
 fi
 
@@ -303,9 +314,9 @@ bdc_status() {
   index_mod=no
   linked_dir=no
   linked_repo=no
-  if [ -d "$core/core" ]; then
+  if [[ -d $core/core ]]; then
     core_patched=yes
-    if [ -h "$core/core/node_modules/betterdiscord" ]; then
+    if [[ -h $core/core/node_modules/betterdiscord ]]; then
       linked_dir="$(readlink "$core/core/node_modules/betterdiscord")"
       if pushd "$core/core/node_modules/betterdiscord" >/dev/null; then
         linked_repo="$(git remote get-url origin 2>/dev/null || printf 'no\n')"
@@ -316,7 +327,7 @@ bdc_status() {
       fi
     fi
   fi
-  if [ ! -f "$core/index.js" ]; then
+  if [[ ! -f $core/index.js ]]; then
     index_mod='(missing) no'
   else
     if ! grep -q 'asar' "$core/index.js"; then
@@ -334,7 +345,7 @@ Linked core repository: %s\n' \
 }
 
 bdc_install() {
-  if [ -d "$core/core" ]; then
+  if [[ -d $core/core ]]; then
     die 'ERROR: Already installed.'
   fi
 
@@ -345,7 +356,7 @@ bdc_install() {
 }
 
 bdc_reinstall() {
-  if [ ! -d "$core/core" ]; then
+  if [[ ! -d $core/core ]]; then
     printf 'Not installed.\n' >&2
     exit 1
   fi
@@ -362,13 +373,13 @@ bdc_reinstall() {
 }
 
 bdc_update() {
-  if [ ! -d "$core/core" ]; then
+  if [[ ! -d $core/core ]]; then
     printf 'Not installed.\n' >&2
     exit 1
   fi
 
   if ! pushd "$core/core/node_modules/betterdiscord" >/dev/null; then
-    if [ -h "$core/core/node_modules/betterdiscord" ]; then
+    if [[ -h $core/core/node_modules/betterdiscord ]]; then
       die 'ERROR: Core BetterDiscord symbolic link is broken.'
     else
       die 'ERROR: Core BetterDiscord location is not a directory.'
@@ -386,7 +397,7 @@ bdc_update() {
 }
 
 bdc_uninstall() {
-  if [ ! -d "$core/core" ]; then
+  if [[ ! -d $core/core ]]; then
     printf 'Not installed.\n' >&2
     exit 1
   fi
@@ -397,13 +408,13 @@ bdc_uninstall() {
   # Remove managed BD repo if applicable
   bd_n=$(bd_map_get_dir "$discord" | bd_map_entry_n)
   bd_map_remove "$discord"
-  if [ -z "$(bd_map_get_n "$bd_n")" ]; then
+  if [[ -z $(bd_map_get_n "$bd_n") ]]; then
     verbose 2 "VV: Removing $data/bd/$bd_n"
     rm -rf "$data/bd/$bd_n"
   fi
 
   # Clean up legacy cruft
-  if [ -d "$discord/resources/app" ]; then
+  if [[ -d $discord/resources/app ]]; then
     printf 'Removing legacy app directory...\n' >&2
     rm -r "$discord/resources/app"
   fi
@@ -412,19 +423,19 @@ bdc_uninstall() {
 }
 
 bdc_upgrade() {
-  if [ "$DISABLE_UPGRADE" ]; then
+  if [[ $DISABLE_UPGRADE ]]; then
     die 'ERROR: Upgrading has been disabled.' \
         'If you installed this from a package, its maintainer should keep it up to date.'
   fi
 
-  github_version="$(curl -sN "$GITHUB_URL" | grep 'VERSION=' -m1 | cut -d '=' -f2)"
-  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+  github_version="$(curl -sN "$GITHUB_URL" | sed -n 's/^VERSION=//p')"
+  if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
     die "ERROR: GitHub couldn't be reached to check the version."
   fi
   verbose 2 "VV: Script location: $SOURCE" >&2
   verbose 1 "V: Local version: $VERSION" >&2
   verbose 1 "V: GitHub version: $github_version" >&2
-  semver_diff="$(semver_compare "$github_version" "$VERSION")"
+  semver_diff="$(Semver::compare "$github_version" "$VERSION")"
   if [[ $semver_diff -eq 1 ]]; then
     printf 'Downloading betterdiscordctl...\n' >&2
     if curl -Sso "$SOURCE" "$GITHUB_URL"; then
@@ -445,19 +456,19 @@ bdc_upgrade() {
 # Implementation functions
 
 bdc_asar() {
-  if [ "$global_asar" ]; then
+  if [[ $global_asar ]]; then
     asar "$@"
   else
     mkdir -p "$data/asar" || die "Couldn't create $data/asar."
     # shellcheck disable=SC2164
     pushd "$data/asar" >/dev/null
-    if [ ! -d "$data/asar/node_modules" ]; then
-      printf '{"devDependencies":{"asar": "*"}}\n' > package.json
+    if [[ ! -d $data/asar/node_modules ]]; then
+      printf '{"devDependencies":{"asar":"*"}}\n' > package.json
       printf 'Installing asar...\n' >&2
-      npm install
+      npm install || die "Couldn't install $data/asar."
     else
       printf 'Updating asar...\n' >&2
-      npm update
+      npm update || die "Couldn't update $data/asar."
     fi
     # shellcheck disable=SC2164
     popd >/dev/null
@@ -466,31 +477,24 @@ bdc_asar() {
 }
 
 bdc_kill() {
-  local process_name
-  if [ -z "$flavor" ]; then
-    process_name='Discord'
-  else
-    if [ "${flavor,,}" == 'ptb' ]; then
-      process_name='DiscordPTB'
-    else
-      process_name='DiscordCanary'
-    fi
+  declare process_name=Discord
+  if [[ $flavor ]]; then
+    process_name+=" $flavor"
   fi
   printf 'Killing %s processes...\n' "$process_name" >&2
-  pkill -ex -SIGKILL "$(ps ax | awk "BEGIN{IGNORECASE=1}/discord(-){0,1}${flavor}/{print \$5}" | rev | \
-                        cut -d '/' -f1 | rev | grep -iE "^discord(-){0,1}${flavor}$" | head -1)" 2>/dev/null
+  pkill -exi -KILL "discord-?$flavor" || printf 'No active processes found.\n' >&2
 }
 
 bd_loader() {
-  if [ ! "$bd" ]; then
+  if [[ -z $bd ]]; then
     bd="$data/bd/$(bd_map_add "$discord" "$bd_repo")"
-    if [ ! -d "$bd" ]; then
+    if [[ ! -d $bd ]]; then
       printf 'Cloning %s...\n' "$bd_repo" >&2
-      git clone "$bd_repo" -b "$bd_repo_branch" --single-branch "$bd"
+      git clone "$bd_repo" -b "$bd_repo_branch" --depth=1 --single-branch "$bd"
     fi
   fi
 
-  if [ "$copy_bd" ]; then
+  if [[ $copy_bd ]]; then
     verbose 1 'V: Copying core loader...' >&2
     cp -r "$bd" "$core/core/node_modules/betterdiscord"
   else
@@ -503,7 +507,7 @@ bd_patch() {
   verbose 1 'V: Unpacking core asar...' >&2
   bdc_asar e "$core/core.asar" "$core/core"
 
-  if [ ! -d "$core/core" ]; then
+  if [[ ! -d $core/core ]]; then
     die 'ERROR: Failed to unpack core asar.' \
         'You may want to install or update nodejs and npm.'
   fi
@@ -533,7 +537,7 @@ bd_map_fresh() {
 
 bd_map_add() {
   entry="$(bd_map_get_repo "$2")"
-  if [ "$entry" ]; then
+  if [[ $entry ]]; then
     num=$(head -n1 <<< "$entry" | bd_map_entry_n)
   else
     num=$(bd_map_fresh)
@@ -558,36 +562,88 @@ bd_map_remove() {
   sed -i "$data/bd_map" -e "\\%$1\\t\\t%d"
 }
 
-# Based on https://gist.github.com/Ariel-Rodriguez/9e3c2163f4644d7a389759b224bfe7f3
-# by Ariel Rodriguez, licensed under MIT
-# Bash-friendly rewrite by bb010g
-semver_compare() {
-  local version_a version_b pr_a pr_b i
-  # strip word "v" and extract first subset version (x.y.z from x.y.z-foo.n)
-  version_a=${1#v}; version_a=${version_a%%-*}
-  version_b=${2#v}; version_b=${version_b%%-*}
+# Included from https://github.com/bb010g/Semver.sh , under the MIT License.
 
-  if [ "$version_a" \= "$version_b" ]
-  then
-    # check for pre-release
-    # extract pre-release (-foo.n from x.y.z-foo.n)
-    pr_a=${1#*-}; pr_a=${pr_a%%-*}
-    pr_b=${2#*-}; pr_b=${pr_b%%-*}
-    # 0 when A is equal to B
-    [ "$pr_a" \= "$pr_b" ] && echo 0 && return 0
-    # 1 when A is not pre-release or (pre-release A exists and is greater than B's pre-release)
-    [ -z "$pr_a" ] || [ "$pr_a" \> "$pr_b" ] && [ -n "$pr_b" ] && echo 1 && return 0
-    # -1 when A is lower than B
-    echo -1 && return 0
+Semver::validate() {
+  # shellcheck disable=SC2064
+  trap "$(shopt -p extglob)" RETURN
+  shopt -s extglob
+
+  declare normal=${1%%[+-]*}
+  declare extra=${1:${#normal}}
+
+  declare major=${normal%%.*}
+  if [[ $major != +([0-9]) ]]; then echo "Semver::validate: invalid major: $major" >&2; return 1; fi
+  normal=${normal:${#major}+1}
+  declare minor=${normal%%.*}
+  if [[ $minor != +([0-9]) ]]; then echo "Semver::validate: invalid minor: $minor" >&2; return 1; fi
+  declare patch=${normal:${#minor}+1}
+  if [[ $patch != +([0-9]) ]]; then echo "Semver::validate: invalid patch: $patch" >&2; return 1; fi
+
+  declare -r ident="+([0-9A-Za-z-])"
+  declare pre=${extra%%+*}
+  declare pre_len=${#pre}
+  if [[ $pre_len -gt 0 ]]; then
+    pre=${pre#-}
+    if [[ $pre != $ident*(.$ident) ]]; then echo "Semver::validate: invalid pre-release: $pre" >&2; return 1; fi
   fi
-  IFS=. read -ra arr_version_a <<< "$version_a"
-  IFS=. read -ra arr_version_b <<< "$version_b"
+  declare build=${extra:pre_len}
+  if [[ ${#build} -gt 0 ]]; then
+    build=${build#+}
+    if [[ $build != $ident*(.$ident) ]]; then echo "Semver::validate: invalid build metadata: $build" >&2; return 1; fi
+  fi
 
-  i=0
-  for i in "${!arr_version_a[@]}"; do
-    if [[ "${arr_version_a[i]}" != "${arr_version_b[i]}" ]]; then break; fi
+  if [[ $2 ]]; then
+    echo "$2=(${major@Q} ${minor@Q} ${patch@Q} ${pre@Q} ${build@Q})"
+  else
+    echo "$1"
+  fi
+}
+
+Semver::compare() {
+  declare -a x y
+  eval "$(Semver::validate "$1" x)"
+  eval "$(Semver::validate "$2" y)"
+
+  declare x_i y_i i
+  for i in 0 1 2; do
+    x_i=${x[i]}; y_i=${y[i]}
+    if [[ $x_i -eq $y_i ]]; then continue; fi
+    if [[ $x_i -gt $y_i ]]; then echo 1; return; fi
+    if [[ $x_i -lt $y_i ]]; then echo -1; return; fi
   done
-  [[ "${arr_version_a[i]}" -gt "${arr_version_b[i]}" ]] && echo 1 || echo -1
+
+  x_i=${x[3]}; y_i=${y[3]}
+  if [[ -z $x_i && $y_i ]]; then echo 1; return; fi
+  if [[ $x_i && -z $y_i ]]; then echo -1; return; fi
+
+  declare -a x_pre; declare x_len
+  declare -a y_pre; declare y_len
+  IFS=. read -ra x_pre <<< "$x_i"; x_len=${#x_pre[@]}
+  IFS=. read -ra y_pre <<< "$y_i"; y_len=${#y_pre[@]}
+
+  if (( x_len > y_len )); then echo 1; return; fi
+  if (( x_len < y_len )); then echo -1; return; fi
+
+  for (( i=0; i < x_len; i++ )); do
+    x_i=${x_pre[i]}; y_i=${y_pre[i]}
+    if [[ $x_i = "$y_i" ]]; then continue; fi
+
+    declare num_x num_y
+    num_x=$([[ $x_i = +([0-9]) ]] && echo "$x_i")
+    num_y=$([[ $y_i = +([0-9]) ]] && echo "$y_i")
+    if [[ $num_x && $num_y ]]; then
+      if [[ $x_i -gt $y_i ]]; then echo 1; return; fi
+      if [[ $x_i -lt $y_i ]]; then echo -1; return; fi
+    else
+      if [[ $num_y ]]; then echo 1; return; fi
+      if [[ $num_x ]]; then echo -1; return; fi
+      if [[ $x_i > $y_i ]]; then echo 1; return; fi
+      if [[ $x_i < $y_i ]]; then echo -1; return; fi
+    fi
+  done
+
+  echo 0
 }
 
 # Run command

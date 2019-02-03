@@ -22,7 +22,7 @@ distro's [package manager][node-packages], you can
 [node-download]: https://nodejs.org/en/download/
 
 You can then install as follows (`#` means that a command needs root, which you
-can get by prefixing a command with `sudo`):
+can get by prefixing it with `sudo`):
 
 ```
 $ curl -O https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl
@@ -50,18 +50,23 @@ You can then keep `betterdiscordctl` up to date with one command:
 
   Increases the verbosity level, for progressively more debugging information.
 
-* `-s` / `--scan` (default `/opt`)
+* `-s` / `--scan` (default `/opt,/usr/share`)
 
-  Changes the directory scanned for Discord installations.
+  Changes the directories scanned for Discord installations. These are scanned
+  in the order provided. Note that these do **not** end in `/discord`—if your
+  Discord installation is at `/opt/discord`, then `/opt` should be scanned.
 
-* `-f` / `--flavors` (default `,Canary,PTB`)
+* `-f` / `--flavors` (default `,canary,ptb`)
 
-  When scanning, looks for installations with the given suffixes (both
-  hyphenated and unhyphenated). Stable is `''`, as it has no suffix.
+  When scanning, looks for installations with the given suffixes (case
+  insensitive, both hyphenated and unhyphenated). Stable is `''`, as it has no
+  suffix. Note that **no** spaces follow commas. Your Discord flavor probably
+  doesn't have a space in it, so don't use any in here.
 
 * `-d` / `--discord` (requires `--modules`)
 
-  Skip scanning and use the Discord installation directory specified.
+  Skip scanning and use the Discord installation directory specified. This
+  **does** probably end in `/discord`.
 
 * `-m` / `--modules`
 
@@ -145,11 +150,11 @@ Updates `betterdiscordctl` to the latest version available on GitHub.
   Shows the status of the default Discord install in `/usr/share`, instead
   of `/opt`.
 
-* `betterdiscordctl install -f PTB`
+* `betterdiscordctl install -f ptb`
 
   Installs BetterDiscord to the PTB flavor, instead of the default.
 
-* `betterdiscordctl reinstall -f Canary`
+* `betterdiscordctl reinstall -f canary`
 
   Reinstalls BetterDiscord to Discord Canary.
 
