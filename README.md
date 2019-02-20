@@ -50,17 +50,17 @@ You can then keep `betterdiscordctl` up to date with one command:
 
   Increases the verbosity level, for progressively more debugging information.
 
-* `-s` / `--scan` (default `/opt,/usr/share`)
+* `-s` / `--scan` (default `/opt:/usr/share`)
 
   Changes the directories scanned for Discord installations. These are scanned
   in the order provided. Note that these do **not** end in `/discord`—if your
   Discord installation is at `/opt/discord`, then `/opt` should be scanned.
 
-* `-f` / `--flavors` (default `,canary,ptb`)
+* `-f` / `--flavors` (default `:canary:ptb`)
 
   When scanning, looks for installations with the given suffixes (case
   insensitive, both hyphenated and unhyphenated). Stable is `''`, as it has no
-  suffix. Note that **no** spaces follow commas. Your Discord flavor probably
+  suffix. Note that **no** spaces follow colons. Your Discord flavor probably
   doesn't have a space in it, so don't use any in here.
 
 * `-d` / `--discord` (requires `--modules`)
@@ -92,19 +92,22 @@ You can then keep `betterdiscordctl` up to date with one command:
   Instead of using a symbolic link, copy the BetterDiscord directory into
   Discord's modules.
 
-* `--global-asar`
+* `--env-asar`
 
-  Instead of maintaining a local installation of `asar`, use the one in `PATH`.
+  Instead of maintaining a local installation of `asar`, use the one in `PATH`,
+  or the command you specify.
 
 * `--snap`
 
   Automatically detect the default Snap directories for Discord. The `-c` flag
-  is set due to Snaps apps being [confined][snapcraft-docs].
+  is set due to Snaps apps being [confined][snapcraft-docs]. A given option
+  argument will be used as the snap(1) command to call.
 
 * `--flatpak`
 
   Automatically detect the default Flatpak directories for Discord. The `-c`
-  flag is set due to Flatpak apps being [sandboxed][flatpak-docs].
+  flag is set due to Flatpak apps being [sandboxed][flatpak-docs]. A given
+  option argument will be used as the flatpak(1) command to call.
 
 [snapcraft-docs]: https://docs.snapcraft.io/reference/confinement
 [flatpak-docs]:   http://docs.flatpak.org/en/latest/working-with-the-sandbox.html

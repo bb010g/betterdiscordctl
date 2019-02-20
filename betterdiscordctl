@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -ueo pipefail
 shopt -s dotglob extglob nullglob
 
 # Constants
-VERSION=1.5.0
-SOURCE="$(readlink -f "${BASH_SOURCE[0]}")"
+VERSION=1.6.0
+SOURCE=$(readlink -f "${BASH_SOURCE[0]}")
 GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
 DISABLE_UPGRADE=
 
@@ -20,15 +20,18 @@ bd_repo='https://github.com/rauenzi/BetterDiscordApp'
 bd_repo_branch=stable16
 bd=
 copy_bd=
-global_asar=
+env_asar=
 snap=
 flatpak=
 
 # Variables
 flavor=
 core=
-xdg_config="${XDG_CONFIG_HOME:-$HOME/.config}"
-data="${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl"
+xdg_config=${XDG_CONFIG_HOME:-$HOME/.config}
+data=${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl
+asar_bin=asar
+snap_bin=snap
+flatpak_bin=flatpak
 
 show_help() {
   cat << EOF
@@ -38,11 +41,11 @@ Options:
   -V, --version                  Display version info and exit
   -h, --help                     Display this help message and exit
   -v, --verbose                  Increase verbosity
-  -s, --scan=DIRECTORIES         Comma-separated list of directories to scan for
+  -s, --scan=DIRECTORIES         Colon-separated list of directories to scan for
                                  a Discord installation.
-                                 (default '/opt,/usr/share')
-  -f, --flavors=FLAVORS          Comma-separated list of Discord flavors
-                                 (default ',canary,ptb')
+                                 (default '/opt:/usr/share')
+  -f, --flavors=FLAVORS          Colon-separated list of Discord flavors
+                                 (default ':canary:ptb')
   -d, --discord=DIRECTORY        Use specified Discord directory
                                  (requires --modules)
   -m, --modules=DIRECTORY        Use specified Discord modules directory
@@ -51,9 +54,12 @@ Options:
                                  (default 'stable16')
   -b, --betterdiscord=DIRECTORY  Use specified BetterDiscord directory
   -c, --copy-bd                  Copy BD directory instead of symlinking
-      --global-asar              Use the asar in PATH instead of local
-      --snap                     Use the Snap version of Discord
-      --flatpak                  Use the Flatpak version of Discord
+      --env-asar[=COMMAND]       Use the asar in PATH (or the specified command)
+                                 instead of local
+      --snap[=COMMAND]           Use the Snap version of Discord (optionally
+                                 using the specified snap(1) command)
+      --flatpak[=COMMAND]        Use the Flatpak version of Discord (optionally
+                                 using the specified flatpak(1) command)
 
 Commands:
   status (default)               Show the current Discord patch state.
@@ -88,7 +94,6 @@ die_non_empty() {
   die_with_help "ERROR: \"$1\" requires a non-empty option argument."
 }
 
-
 while :; do
   if [[ -z ${1+x} ]]; then break; fi
   case $1 in
@@ -106,21 +111,21 @@ while :; do
       ((++verbosity))
       ;;
     -s|--scan)
-      if [[ ${2+x} ]]; then IFS=',' read -ra scan <<< "$2"; shift
+      if [[ ${2+x} ]]; then IFS=':' read -ra scan <<< "$2"; shift
       else die_non_empty '--scan'; fi
       ;;
     --scan=?*)
-      IFS=',' read -ra scan <<< "${1#*=}"
+      IFS=':' read -ra scan <<< "${1#*=}"
       ;;
     --scan=)
       die_non_empty '--scan'
       ;;
     -f|--flavors)
-      if [[ ${2+x} ]]; then IFS=',' read -ra flavors <<< "$2"; shift
+      if [[ ${2+x} ]]; then IFS=':' read -ra flavors <<< "$2"; shift
       else die_non_empty '--flavors'; fi
       ;;
     --flavors=?*)
-      IFS=',' read -ra flavors <<< "${1#*=}"
+      IFS=':' read -ra flavors <<< "${1#*=}"
       ;;
     --flavors=)
       die_non_empty '--flavors'
@@ -178,16 +183,39 @@ while :; do
     -c|--copy-bd)
       copy_bd=yes
       ;;
-    --global-asar)
-      global_asar=yes
+    --env-asar)
+      env_asar=yes
+      ;;
+    --env-asar=?*)
+      env_asar=yes
+      asar_bin=${1#*=}
+      ;;
+    --env-asar=)
+      die_non_empty '--env-asar'
       ;;
     --snap)
       snap=yes
       copy_bd=yes
       ;;
+    --snap=?*)
+      snap=yes
+      copy_bd=yes
+      snap_bin=${1#*=}
+      ;;
+    --snap=)
+      die_non_empty '--snap'
+      ;;
     --flatpak)
       flatpak=yes
       copy_bd=yes
+      ;;
+    --flatpak=?*)
+      flatpak=yes
+      copy_bd=yes
+      flatpak=${1#*=}
+      ;;
+    --flatpak=)
+      die_non_empty '--flatpak'
       ;;
     --)
       shift
@@ -211,12 +239,12 @@ bdc_find_modules() {
   if ((! ${#all_modules[@]})); then
     die 'ERROR: Discord modules directory not found.'
   fi
-  modules="${all_modules[-1]}"
+  modules=${all_modules[-1]}
   verbose 1 "V: Found modules in $modules"
 }
 
 if [[ $snap ]]; then
-  desktop_file='/var/lib/snapd/desktop/applications/discord_discord.desktop'
+  desktop_file=/var/lib/snapd/desktop/applications/discord_discord.desktop
   if [[ -f $desktop_file ]]; then
     discord=$(sed -n 's/Icon=\(.*\)\/discord.png/\1/p' $desktop_file)
   else
@@ -231,8 +259,8 @@ if [[ $snap ]]; then
     verbose 1 "V: Using Discord at $discord"
     # shellcheck disable=SC2016
     # Expansion should happen inside snap's shell.
-    xdg_config="$(snap run --shell discord <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}"')"
-    discord_config="$xdg_config/discord"
+    xdg_config=$("$snap" run --shell discord <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}" 1>&3' 3>&1)
+    discord_config=$xdg_config/discord
     bdc_find_modules
   else
     die 'ERROR: Discord installation not found.'
@@ -240,15 +268,21 @@ if [[ $snap ]]; then
 fi
 
 if [[ $flatpak ]]; then
-  flatpak_location="$(flatpak info --show-location com.discordapp.Discord)"
-  discord="$flatpak_location/files/extra"
+  # flatpak sucks and doesn't use stderr for warnings.
+  # https://github.com/flatpak/flatpak/blob/13e449b5033d063f0df8b2d496c6ff929543239c/app/flatpak-main.c#L259-L286
+  # This really should be better about directories with newlines, but...
+  # Translations. So we're just going to grab the last line and hope for the best.
+  flatpak_location=$("$flatpak" info --show-location com.discordapp.Discord)
+  flatpak_location=${flatpak_location##*$'\n'}
+  discord=$flatpak_location/files/extra
   verbose 2 "VV: Checking $discord" >&2
   if [[ -d $discord ]]; then
     verbose 1 "V: Using Discord at $discord" >&2
+    # We can avoid the earlier warning problem by using FD 3. yay.
     # shellcheck disable=SC2016
     # Expansion should happen inside flatpak's shell.
-    flatpak_config="$(flatpak run --command=sh com.discordapp.Discord -c 'echo $XDG_CONFIG_HOME')"
-    discord_config="${flatpak_config:-$HOME/.var/app/com.discordapp.Discord/config}/discord"
+    flatpak_config=$("$flatpak" run --command=sh com.discordapp.Discord -c 'echo $XDG_CONFIG_HOME 1>&3' 3>&1)
+    discord_config=${flatpak_config:-$HOME/.var/app/com.discordapp.Discord/config}/discord
     if [[ ! -d $discord_config ]]; then
       printf 'WARN: Config directory not found for Discord (%s, %s).\n' "$discord" "$discord_config" >&2
     fi
@@ -269,7 +303,7 @@ if [[ $cmd != upgrade ]]; then
           shopt -u nocaseglob
           if [[ -d $discord ]]; then
             verbose 1 "V: Using Discord at $discord" >&2
-            discord_config="$xdg_config/discord${flavor,,}"
+            discord_config=$xdg_config/discord${flavor,,}
             if [[ ! -d $discord_config ]]; then
               printf 'WARN: Config directory not found for Discord %s (%s, %s).\n' "$flavor" "$discord" "$discord_config" >&2
               continue 2
@@ -289,7 +323,7 @@ if [[ $cmd != upgrade ]]; then
       die 'ERROR: Discord installation not found.'
     done
   else
-    flavor="$flavors"
+    flavor=$flavors
     # --discord and --modules
     if [[ -z $modules ]]; then
       die_with_help 'ERROR: "--discord" requires "--modules" to also be set.'
@@ -301,7 +335,7 @@ if [[ $cmd != upgrade ]]; then
       die 'ERROR: Discord modules directory not found.'
     fi
   fi
-  core="$modules/discord_desktop_core"
+  core=$modules/discord_desktop_core
   if [[ ! -d $core ]]; then
     die "ERROR: Directory 'discord_desktop_core' not found in $(readlink -f "$modules")"
   fi
@@ -317,10 +351,9 @@ bdc_status() {
   if [[ -d $core/core ]]; then
     core_patched=yes
     if [[ -h $core/core/node_modules/betterdiscord ]]; then
-      linked_dir="$(readlink "$core/core/node_modules/betterdiscord")"
+      linked_dir=$(readlink "$core/core/node_modules/betterdiscord")
       if pushd "$core/core/node_modules/betterdiscord" >/dev/null; then
-        linked_repo="$(git remote get-url origin 2>/dev/null || printf 'no\n')"
-        # shellcheck disable=SC2164
+        linked_repo=$(git remote get-url origin 2>/dev/null || printf 'no\n')
         popd >/dev/null
       else
         linked_dir="(broken link) $linked_dir"
@@ -392,7 +425,6 @@ bdc_update() {
   else
     printf 'WARN: No Git repository found.\n' >&2
   fi
-  # shellcheck disable=SC2164
   popd >/dev/null
 }
 
@@ -428,14 +460,14 @@ bdc_upgrade() {
         'If you installed this from a package, its maintainer should keep it up to date.'
   fi
 
-  github_version="$(curl -sN "$GITHUB_URL" | sed -n 's/^VERSION=//p')"
+  github_version=$(curl -sN "$GITHUB_URL" | sed -n 's/^VERSION=//p')
   if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
     die "ERROR: GitHub couldn't be reached to check the version."
   fi
   verbose 2 "VV: Script location: $SOURCE" >&2
   verbose 1 "V: Local version: $VERSION" >&2
   verbose 1 "V: GitHub version: $github_version" >&2
-  semver_diff="$(Semver::compare "$github_version" "$VERSION")"
+  semver_diff=$(Semver::compare "$github_version" "$VERSION")
   if [[ $semver_diff -eq 1 ]]; then
     printf 'Downloading betterdiscordctl...\n' >&2
     if curl -Sso "$SOURCE" "$GITHUB_URL"; then
@@ -456,11 +488,10 @@ bdc_upgrade() {
 # Implementation functions
 
 bdc_asar() {
-  if [[ $global_asar ]]; then
-    asar "$@"
+  if [[ $asar ]]; then
+    "$asar" "$@"
   else
     mkdir -p "$data/asar" || die "Couldn't create $data/asar."
-    # shellcheck disable=SC2164
     pushd "$data/asar" >/dev/null
     if [[ ! -d $data/asar/node_modules ]]; then
       printf '{"devDependencies":{"asar":"*"}}\n' > package.json
@@ -470,7 +501,6 @@ bdc_asar() {
       printf 'Updating asar...\n' >&2
       npm update || die "Couldn't update $data/asar."
     fi
-    # shellcheck disable=SC2164
     popd >/dev/null
     "$data/asar/node_modules/asar/bin/asar.js" "$@"
   fi
@@ -487,7 +517,7 @@ bdc_kill() {
 
 bd_loader() {
   if [[ -z $bd ]]; then
-    bd="$data/bd/$(bd_map_add "$discord" "$bd_repo")"
+    bd=$data/bd/$(bd_map_add "$discord" "$bd_repo")
     if [[ ! -d $bd ]]; then
       printf 'Cloning %s...\n' "$bd_repo" >&2
       git clone "$bd_repo" -b "$bd_repo_branch" --depth=1 --single-branch "$bd"
@@ -536,7 +566,7 @@ bd_map_fresh() {
 }
 
 bd_map_add() {
-  entry="$(bd_map_get_repo "$2")"
+  entry=$(bd_map_get_repo "$2")
   if [[ $entry ]]; then
     num=$(head -n1 <<< "$entry" | bd_map_entry_n)
   else
