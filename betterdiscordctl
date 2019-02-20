@@ -309,7 +309,7 @@ if [[ $cmd != upgrade ]]; then
               continue 2
             fi
             if [[ -z $modules ]]; then
-                bdc_find_modules
+              bdc_find_modules
             else
               # --modules
               if [[ ! -d $modules ]]; then
@@ -320,8 +320,8 @@ if [[ $cmd != upgrade ]]; then
           fi
         done
       done
-      die 'ERROR: Discord installation not found.'
     done
+    die 'ERROR: Discord installation not found.'
   else
     flavor=$flavors
     # --discord and --modules
