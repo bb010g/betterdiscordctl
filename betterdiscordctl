@@ -212,7 +212,7 @@ while :; do
     --flatpak=?*)
       flatpak=yes
       copy_bd=yes
-      flatpak=${1#*=}
+      flatpak_bin=${1#*=}
       ;;
     --flatpak=)
       die_non_empty '--flatpak'
@@ -259,7 +259,7 @@ if [[ $snap ]]; then
     verbose 1 "V: Using Discord at $discord"
     # shellcheck disable=SC2016
     # Expansion should happen inside snap's shell.
-    xdg_config=$("$snap" run --shell discord <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}" 1>&3' 3>&1)
+    xdg_config=$("$snap_bin" run --shell discord <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}" 1>&3' 3>&1)
     discord_config=$xdg_config/discord
     bdc_find_modules
   else
@@ -272,7 +272,7 @@ if [[ $flatpak ]]; then
   # https://github.com/flatpak/flatpak/blob/13e449b5033d063f0df8b2d496c6ff929543239c/app/flatpak-main.c#L259-L286
   # This really should be better about directories with newlines, but...
   # Translations. So we're just going to grab the last line and hope for the best.
-  flatpak_location=$("$flatpak" info --show-location com.discordapp.Discord)
+  flatpak_location=$("$flatpak_bin" info --show-location com.discordapp.Discord)
   flatpak_location=${flatpak_location##*$'\n'}
   discord=$flatpak_location/files/extra
   verbose 2 "VV: Checking $discord" >&2
@@ -281,7 +281,7 @@ if [[ $flatpak ]]; then
     # We can avoid the earlier warning problem by using FD 3. yay.
     # shellcheck disable=SC2016
     # Expansion should happen inside flatpak's shell.
-    flatpak_config=$("$flatpak" run --command=sh com.discordapp.Discord -c 'echo $XDG_CONFIG_HOME 1>&3' 3>&1)
+    flatpak_config=$("$flatpak_bin" run --command=sh com.discordapp.Discord -c 'echo $XDG_CONFIG_HOME 1>&3' 3>&1)
     discord_config=${flatpak_config:-$HOME/.var/app/com.discordapp.Discord/config}/discord
     if [[ ! -d $discord_config ]]; then
       printf 'WARN: Config directory not found for Discord (%s, %s).\n' "$discord" "$discord_config" >&2
@@ -488,8 +488,8 @@ bdc_upgrade() {
 # Implementation functions
 
 bdc_asar() {
-  if [[ $asar ]]; then
-    "$asar" "$@"
+  if [[ $env_asar ]]; then
+    "$asar_bin" "$@"
   else
     mkdir -p "$data/asar" || die "Couldn't create $data/asar."
     pushd "$data/asar" >/dev/null
@@ -547,7 +547,7 @@ bd_patch() {
   sed -i "$core/core/app/mainScreen.js" \
       -e "/use strict/a var _betterDiscord = require('betterdiscord');\\nvar _betterDiscord2;" \
       -e "/mainWindow = new/a \\  _betterDiscord2 = new _betterDiscord.BetterDiscord(mainWindow);" \
-      -e "/nodeIntegration: false/d"
+      -e "/nodeIntegration: false/d" -e "/webPreferences:/a \\      nodeIntegration: true,"
 }
 
 bd_unpatch() {
