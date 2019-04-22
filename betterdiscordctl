@@ -4,7 +4,7 @@ set -ueo pipefail
 shopt -s dotglob extglob nullglob
 
 # Constants
-VERSION=1.5.0
+VERSION=1.5.1
 SOURCE="$(readlink -f "${BASH_SOURCE[0]}")"
 GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
 DISABLE_UPGRADE=
@@ -517,7 +517,7 @@ bd_patch() {
   sed -i "$core/core/app/mainScreen.js" \
       -e "/use strict/a var _betterDiscord = require('betterdiscord');\\nvar _betterDiscord2;" \
       -e "/mainWindow = new/a \\  _betterDiscord2 = new _betterDiscord.BetterDiscord(mainWindow);" \
-      -e "/nodeIntegration: false/d"
+      -e "/nodeIntegration: false/d" -e "/webPreferences:/a \\      nodeIntegration: true,"
 }
 
 bd_unpatch() {
