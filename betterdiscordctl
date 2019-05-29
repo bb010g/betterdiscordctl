@@ -277,7 +277,7 @@ if [[ $cmd != upgrade ]]; then
       for flavor in "${flavors[@]}"; do
         verbose 2 "VV: Trying flavor '$flavor'"
         shopt -s nocaseglob
-        for discord in "$scan"/discord?(-)"$flavor"; do
+        for discord in "$scandir"/discord?(-)"$flavor"; do
           shopt -u nocaseglob
           if [[ -d $discord ]]; then
             verbose 1 "V: Using Discord at $discord"
