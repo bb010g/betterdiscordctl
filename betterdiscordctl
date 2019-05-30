@@ -382,8 +382,8 @@ bdc_update() {
   fi
   if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     printf 'Updating Git repository...\n' >&2
-    git fetch origin
-    git reset --hard "origin/$bd_repo_branch"
+    git fetch origin "$bd_repo_branch"
+    git reset --hard FETCH_HEAD
   else
     printf 'WARN: No Git repository found.\n' >&2
   fi
