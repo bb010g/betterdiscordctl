@@ -12,14 +12,9 @@ A manager for BetterDiscord on Linux.
 
 ### Manual
 
-Requires `git`, `nodejs`, and `npm`. You can install `git` from your distro's
-[package manager][git-packages]. If you don't have `nodejs` and `npm` in your
-distro's [package manager][node-packages], you can
-[download them][node-download].
+Requires `git` which you can install from your distro's [package manager][git-packages].
 
 [git-packages]:  https://git-scm.com/download/linux/
-[node-packages]: https://nodejs.org/en/download/package-manager/
-[node-download]: https://nodejs.org/en/download/
 
 You can then install as follows (`#` means that a command needs root, which you
 can get by prefixing it with `sudo`):
@@ -78,7 +73,7 @@ You can then keep `betterdiscordctl` up to date with one command:
   When installing BetterDiscord, use the specified Git repository. Does _not_
   affect updates. Defaults to Zerebos's BandagedBD fork.
 
-* `--bd-repo-branch` (default `stable16`)
+* `--bd-repo-branch` (default `injector`)
 
   When downloading from `--bd-repo`, use this branch.
 
@@ -91,11 +86,6 @@ You can then keep `betterdiscordctl` up to date with one command:
 
   Instead of using a symbolic link, copy the BetterDiscord directory into
   Discord's modules.
-
-* `--env-asar`
-
-  Instead of maintaining a local installation of `asar`, use the one in `PATH`,
-  or the command you specify.
 
 * `--snap`
 
@@ -182,10 +172,6 @@ Updates `betterdiscordctl` to the latest version available on GitHub.
 * `$XDG_DATA_HOME/betterdiscordctl/bd`
 
   A directory of BetterDiscord clones, indexed by `bd_map`.
-
-* `$XDG_DATA_HOME/asar`
-
-  A locally managed installation of `asar`.
 
 * `$XDG_CONFIG_HOME/BetterDiscord` (fallback `~/.config/BetterDiscord`)
 
