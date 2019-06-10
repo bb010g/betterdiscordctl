@@ -4,7 +4,7 @@ set -ueo pipefail
 shopt -s dotglob extglob nullglob
 
 # Constants
-VERSION=1.6.0
+VERSION=1.6.1
 SOURCE=$(readlink -f "${BASH_SOURCE[0]}")
 GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
 DISABLE_UPGRADE=
@@ -219,97 +219,6 @@ done
 mkdir -p "$data"
 [[ -f $data/bd_map ]] || touch "$data/bd_map"
 
-bdc_find_modules() {
-  declare -a all_modules
-  all_modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
-  ((${#all_modules[@]})) || die 'ERROR: Discord modules directory not found.'
-  modules=${all_modules[-1]}
-  verbose 1 "V: Found modules in $modules"
-}
-
-if [[ $snap ]]; then
-  # shellcheck disable=SC2016
-  # Expansion should happen inside snap's shell.
-  snap_location=$("$snap_bin" run --shell discord <<< 'echo "$SNAP" 1>&3' 3>&1)
-  discord=${snap_location:?}/usr/share/discord
-  verbose 2 "VV: Checking $discord"
-  if [[ -d $discord ]]; then
-    verbose 1 "V: Using Discord at $discord"
-    # shellcheck disable=SC2016
-    # Expansion should happen inside snap's shell.
-    xdg_config=$("$snap_bin" run --shell discord <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}" 1>&3' 3>&1)
-    discord_config=$xdg_config/discord
-    bdc_find_modules
-  else
-    die 'ERROR: Discord installation not found.'
-  fi
-fi
-
-if [[ $flatpak ]]; then
-  # flatpak sucks and doesn't use stderr for warnings.
-  # https://github.com/flatpak/flatpak/blob/13e449b/app/flatpak-main.c#L259-L286
-  # This really should be better for directories with newlines, but...
-  # We're just going to grab the last line and hope for the best.
-  flatpak_location=$("$flatpak_bin" info --show-location com.discordapp.Discord)
-  flatpak_location=${flatpak_location##*$'\n'}
-  discord=${flatpak_location:?}/files/extra
-  verbose 2 "VV: Checking $discord"
-  if [[ -d $discord ]]; then
-    verbose 1 "V: Using Discord at $discord"
-    # We can avoid the earlier warning problem by using FD 3. yay.
-    # shellcheck disable=SC2016
-    # Expansion should happen inside flatpak's shell.
-    flatpak_config=$("$flatpak_bin" run --command=sh com.discordapp.Discord -c 'echo $XDG_CONFIG_HOME 1>&3' 3>&1)
-    discord_config=${flatpak_config:-$HOME/.var/app/com.discordapp.Discord/config}/discord
-    if [[ ! -d $discord_config ]]; then
-      printf 'WARN: Config directory not found for Discord (%s, %s).\n' "$discord" "$discord_config" >&2
-    fi
-    bdc_find_modules
-  else
-    die 'ERROR: Discord installation not found.'
-  fi
-fi
-
-if [[ $cmd != upgrade ]]; then
-  if [[ -z $discord ]]; then
-    for scandir in "${scan[@]}"; do
-      verbose 2 "VV: Scanning $scandir"
-      for flavor in "${flavors[@]}"; do
-        verbose 2 "VV: Trying flavor '$flavor'"
-        shopt -s nocaseglob
-        for discord in "$scandir"/discord?(-)"$flavor"; do
-          shopt -u nocaseglob
-          if [[ -d $discord ]]; then
-            verbose 1 "V: Using Discord at $discord"
-            discord_config=$xdg_config/discord${flavor,,}
-            if [[ ! -d $discord_config ]]; then
-              printf 'WARN: Config directory not found for Discord %s (%s, %s).\n' \
-                "$flavor" "$discord" "$discord_config" >&2
-              continue 2
-            fi
-            if [[ -z $modules ]]; then
-              bdc_find_modules
-            else
-              # --modules
-              [[ -d $modules ]] || die 'ERROR: Discord modules directory not found.'
-            fi
-            break 3
-          fi
-        done
-      done
-    done
-  else
-    flavor=$flavors
-    # --discord and --modules
-    [[ -z $modules ]] && die_with_help 'ERROR: "--discord" requires "--modules" to also be set.'
-    [[ -d $discord ]] || die 'ERROR: Discord installation not found.'
-    [[ -d $modules ]] || die 'ERROR: Discord modules directory not found.'
-  fi
-  [[ -d $discord ]] || die 'ERROR: Discord installation not found.'
-  core=$modules/discord_desktop_core
-  [[ -d $core ]] || die "ERROR: Directory 'discord_desktop_core' not found in $(readlink -f "$modules")"
-fi
-
 # Commands
 
 bdc_status() {
@@ -439,6 +348,108 @@ bdc_upgrade() {
 }
 
 # Implementation functions
+
+bdc_main() {
+  if [[ -z $discord ]]; then
+    if [[ $snap ]]; then bdc_snap
+    elif [[ $flatpak ]]; then bdc_flatpak
+    else bdc_scan; fi
+  else
+    flavor=$flavors
+    # --discord and --modules
+    [[ -z $modules ]] && die_with_help 'ERROR: "--discord" requires "--modules" to also be set.'
+    [[ -d $discord ]] || die 'ERROR: Discord installation not found.'
+    [[ -d $modules ]] || die 'ERROR: Discord modules directory not found.'
+  fi
+  [[ -d $discord ]] || die 'ERROR: Discord installation not found. Try specifying it with "--discord".'
+  core=$modules/discord_desktop_core
+  [[ -d $core ]] || die "ERROR: Directory 'discord_desktop_core' not found in $(readlink -f "$modules")"
+}
+
+bdc_scan() {
+  for scandir in "${scan[@]}"; do
+    verbose 2 "VV: Scanning $scandir"
+    for flavor in "${flavors[@]}"; do
+      verbose 2 "VV: Trying flavor '$flavor'"
+      shopt -s nocaseglob
+      for discord in "$scandir"/discord?(-)"$flavor"; do
+        shopt -u nocaseglob
+        if [[ -d $discord ]]; then
+          verbose 1 "V: Using Discord at $discord"
+          discord_config=$xdg_config/discord${flavor,,}
+          if [[ ! -d $discord_config ]]; then
+            printf 'WARN: Config directory not found for Discord %s (%s, %s).\n' \
+              "$flavor" "$discord" "$discord_config" >&2
+            continue 2
+          fi
+          if [[ -z $modules ]]; then
+            bdc_find_modules
+          else
+            # --modules
+            [[ -d $modules ]] || die 'ERROR: Discord modules directory not found.'
+          fi
+          break 3
+        fi
+      done
+    done
+  done
+}
+
+bdc_find_modules() {
+  declare -a all_modules
+  all_modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
+  ((${#all_modules[@]})) || die 'ERROR: Discord modules directory not found.'
+  modules=${all_modules[-1]}
+  verbose 1 "V: Found modules in $modules"
+}
+
+bdc_snap() {
+  # shellcheck disable=SC2016
+  # Expansion should happen inside snap's shell.
+  snap_location=$("$snap_bin" run --shell discord <<< 'echo "$SNAP" 1>&3' 3>&1)
+  discord=${snap_location:?}/usr/share/discord
+  verbose 2 "VV: Checking $discord"
+  if [[ -d $discord ]]; then
+    verbose 1 "V: Using Discord at $discord"
+    # shellcheck disable=SC2016
+    # Expansion should happen inside snap's shell.
+    xdg_config=$("$snap_bin" run --shell discord <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}" 1>&3' 3>&1)
+    discord_config=$xdg_config/discord
+    bdc_find_modules
+  else
+    die 'ERROR: Discord installation not found.'
+  fi
+}
+
+bdc_flatpak() {
+  flatpak_version=$("$flatpak_bin" --version | sed -n 's/Flatpak //p')
+  if [[ $(Semver::compare "$flatpak_version" '1.0.0') -eq -1 ]]; then
+    die 'ERROR: You are using an unsupported version of Flatpak.' \
+        'See https://github.com/bb010g/betterdiscordctl/issues/45'
+  fi
+  # flatpak sucks and doesn't use stderr for warnings.
+  # https://github.com/flatpak/flatpak/blob/13e449b/app/flatpak-main.c#L259-L286
+  # This really should be better for directories with newlines, but...
+  # We're just going to grab the last line and hope for the best.
+  flatpak_location=$("$flatpak_bin" info --show-location com.discordapp.Discord)
+  flatpak_location=${flatpak_location##*$'\n'}
+  discord=${flatpak_location:?}/files/extra
+  verbose 2 "VV: Checking $discord"
+  if [[ -d $discord ]]; then
+    verbose 1 "V: Using Discord at $discord"
+    # We can avoid the earlier warning problem by using FD 3. yay.
+    # shellcheck disable=SC2016
+    # Expansion should happen inside flatpak's shell.
+    flatpak_config=$("$flatpak_bin" run --command=sh com.discordapp.Discord -c 'echo $XDG_CONFIG_HOME 1>&3' 3>&1)
+    discord_config=${flatpak_config:-$HOME/.var/app/com.discordapp.Discord/config}/discord
+    if [[ ! -d $discord_config ]]; then
+      printf 'WARN: Config directory not found for Discord (%s, %s).\n' "$discord" "$discord_config" >&2
+    fi
+    bdc_find_modules
+  else
+    die 'ERROR: Discord installation not found.'
+  fi
+}
 
 bdc_kill() {
   declare process_name=Discord
@@ -607,18 +618,23 @@ Semver::compare() {
 
 case "$cmd" in
   status)
+    bdc_main
     bdc_status
     ;;
   install)
+    bdc_main
     bdc_install
     ;;
   reinstall)
+    bdc_main
     bdc_reinstall
     ;;
   update)
+    bdc_main
     bdc_update
     ;;
   uninstall)
+    bdc_main
     bdc_uninstall
     ;;
   upgrade)
