@@ -4,9 +4,8 @@ set -ueo pipefail
 shopt -s dotglob extglob nullglob
 
 # Constants
-VERSION=1.6.1
+VERSION=1.7.0
 SOURCE=$(readlink -f "${BASH_SOURCE[0]}")
-GITHUB_URL='https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl'
 DISABLE_UPGRADE=
 
 # Options
@@ -22,6 +21,7 @@ bd=
 copy_bd=
 snap=
 flatpak=
+bdctl_url='https://git.io/bdctl'
 
 # Variables
 flavor=
@@ -40,22 +40,24 @@ Options:
   -h, --help                     Display this help message and exit
   -v, --verbose                  Increase verbosity
   -s, --scan=DIRECTORIES         Colon-separated list of directories to scan for
-                                 a Discord installation.
+                                 a Discord installation
                                  (default '/opt:/usr/share')
   -f, --flavors=FLAVORS          Colon-separated list of Discord flavors
                                  (default ':canary:ptb')
-  -d, --discord=DIRECTORY        Use specified Discord directory
+  -d, --discord=DIRECTORY        Use the specified Discord directory
                                  (requires --modules)
-  -m, --modules=DIRECTORY        Use specified Discord modules directory
-  -r, --bd-repo=REPOSITORY       Use specified Git repo for BetterDiscord
-      --bd-repo-branch=BRANCH    Use specified Git branch for BetterDiscord
+  -m, --modules=DIRECTORY        Use the specified Discord modules directory
+  -r, --bd-repo=REPOSITORY       Use the specified Git repo for BetterDiscord
+      --bd-repo-branch=BRANCH    Use the specified Git branch for BetterDiscord
                                  (default 'stable16')
-  -b, --betterdiscord=DIRECTORY  Use specified BetterDiscord directory
+  -b, --betterdiscord=DIRECTORY  Use the specified BetterDiscord directory
   -c, --copy-bd                  Copy BD directory instead of symlinking
       --snap[=COMMAND]           Use the Snap version of Discord (optionally
-                                 using the specified snap(1) command)
+                                 using the specified snap command)
       --flatpak[=COMMAND]        Use the Flatpak version of Discord (optionally
-                                 using the specified flatpak(1) command)
+                                 using the specified flatpak command)
+      --bdctl-url=URL            Use the specified URL for upgrading BDCTL
+                                 (default 'https://git.io/bdctl')
 
 Commands:
   status (default)               Show the current Discord patch state.
@@ -203,6 +205,16 @@ while :; do
     --flatpak=)
       die_non_empty '--flatpak'
       ;;
+    --bdctl-url)
+      if [[ ${2+x} ]]; then bdctl_url=$2; shift
+      else die_non_empty '--bdctl-url'; fi
+      ;;
+    --bdctl-url=?*)
+      bdctl_url=${1#*=}
+      ;;
+    --bdctl-url=)
+      die_non_empty '--bdctl-url'
+      ;;
     --)
       shift
       break
@@ -322,17 +334,18 @@ bdc_upgrade() {
         'If you installed this from a package, its maintainer should keep it up to date.'
   fi
 
-  github_version=$(curl -sN "$GITHUB_URL" | sed -n 's/^VERSION=//p')
+  github_version=$(curl -NLSs "$bdctl_url" | sed -n 's/^VERSION=//p')
   if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
     die "ERROR: GitHub couldn't be reached to check the version."
   fi
   verbose 2 "VV: Script location: $SOURCE"
+  verbose 2 "VV: Upgrade URL: $bdctl_url"
   verbose 1 "V: Local version: $VERSION"
   verbose 1 "V: GitHub version: $github_version"
   semver_diff=$(Semver::compare "$github_version" "$VERSION")
   if [[ $semver_diff -eq 1 ]]; then
     printf 'Downloading betterdiscordctl...\n' >&2
-    if curl -Sso "$SOURCE" "$GITHUB_URL"; then
+    if curl -LSso "$SOURCE" "$bdctl_url"; then
       printf 'Successfully updated betterdiscordctl.\n' >&2
     else
       die 'ERROR: Failed to update betterdiscordctl.' \
@@ -384,8 +397,7 @@ bdc_scan() {
           fi
           if [[ -z $modules ]]; then
             bdc_find_modules
-          else
-            # --modules
+          else # --modules
             [[ -d $modules ]] || die 'ERROR: Discord modules directory not found.'
           fi
           break 3
@@ -397,7 +409,7 @@ bdc_scan() {
 
 bdc_find_modules() {
   declare -a all_modules
-  all_modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])'/modules')
+  all_modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])/modules)
   ((${#all_modules[@]})) || die 'ERROR: Discord modules directory not found.'
   modules=${all_modules[-1]}
   verbose 1 "V: Found modules in $modules"
@@ -406,14 +418,14 @@ bdc_find_modules() {
 bdc_snap() {
   # shellcheck disable=SC2016
   # Expansion should happen inside snap's shell.
-  snap_location=$("$snap_bin" run --shell discord <<< 'echo "$SNAP" 1>&3' 3>&1)
+  snap_location=$("$snap_bin" run --shell discord <<< 'echo $SNAP 1>&3' 3>&1)
   discord=${snap_location:?}/usr/share/discord
   verbose 2 "VV: Checking $discord"
   if [[ -d $discord ]]; then
     verbose 1 "V: Using Discord at $discord"
     # shellcheck disable=SC2016
     # Expansion should happen inside snap's shell.
-    xdg_config=$("$snap_bin" run --shell discord <<< 'echo "${XDG_CONFIG_HOME:-$SNAP_USER_DATA/.config}" 1>&3' 3>&1)
+    xdg_config=$("$snap_bin" run --shell discord <<< 'echo $SNAP_USER_DATA/.config 1>&3' 3>&1)
     discord_config=$xdg_config/discord
     bdc_find_modules
   else
@@ -433,14 +445,17 @@ bdc_flatpak() {
   # We're just going to grab the last line and hope for the best.
   flatpak_location=$("$flatpak_bin" info --show-location com.discordapp.Discord)
   flatpak_location=${flatpak_location##*$'\n'}
-  discord=${flatpak_location:?}/files/extra
+  if [[ -d ${flatpak_location:?}/files/discord ]]; then
+    discord=$flatpak_location/files/discord
+  else
+    discord=$flatpak_location/files/extra
+  fi
   verbose 2 "VV: Checking $discord"
   if [[ -d $discord ]]; then
     verbose 1 "V: Using Discord at $discord"
-    # We can avoid the earlier warning problem by using FD 3. yay.
     # shellcheck disable=SC2016
     # Expansion should happen inside flatpak's shell.
-    flatpak_config=$("$flatpak_bin" run --command=sh com.discordapp.Discord -c 'echo $XDG_CONFIG_HOME 1>&3' 3>&1)
+    flatpak_config=$("$flatpak_bin" run --command=sh com.discordapp.Discord -c 'echo $XDG_CONFIG_HOME')
     discord_config=${flatpak_config:-$HOME/.var/app/com.discordapp.Discord/config}/discord
     if [[ ! -d $discord_config ]]; then
       printf 'WARN: Config directory not found for Discord (%s, %s).\n' "$discord" "$discord_config" >&2
