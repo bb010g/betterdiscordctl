@@ -45,6 +45,10 @@ You can then keep `betterdiscordctl` up to date with one command:
 
   Increases the verbosity level, for progressively more debugging information.
 
+* `--nix`
+
+  Scans the nixos store for installation.
+
 * `-s` / `--scan` (default `/opt:/usr/share`)
 
   Changes the directories scanned for Discord installations. These are scanned
@@ -101,6 +105,15 @@ You can then keep `betterdiscordctl` up to date with one command:
 
 [snapcraft-docs]: https://docs.snapcraft.io/reference/confinement
 [flatpak-docs]:   http://docs.flatpak.org/en/latest/working-with-the-sandbox.html
+
+
+## Installing on nix
+
+To install on nix simply clone this repository and do
+
+```bash
+nix-env -if .
+```
 
 ## Commands
 
