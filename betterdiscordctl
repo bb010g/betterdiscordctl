@@ -126,6 +126,9 @@ while :; do
     --flavors=)
       die_non_empty '--flavors'
       ;;
+		--nix)
+			scan=("$(nix-store -r $(which Discord))/opt")
+			;;
     -d|--discord)
       if [[ ${2+x} ]]; then discord=$2; shift
       else die_non_empty '--discord'; fi
