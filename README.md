@@ -45,7 +45,7 @@ You can then keep `betterdiscordctl` up to date with one command:
 
   Increases the verbosity level, for progressively more debugging information.
 
-* `-s` / `--scan` (default `/opt:/usr/share`)
+* `-s` / `--scan` (default `/opt:/usr/share:/usr/lib64`)
 
   Changes the directories scanned for Discord installations. These are scanned
   in the order provided. Note that these do **not** end in `/discord`—if your
@@ -99,7 +99,7 @@ You can then keep `betterdiscordctl` up to date with one command:
   flag is set due to Flatpak apps being [sandboxed][flatpak-docs]. A given
   option argument will be used as the flatpak command to call.
 
-* `--bdctl-url` (default `https://git.io/bdctl`)
+* `--upgrade-url` (default `https://git.io/bdctl`)
 
   Use the specified URL for upgrading betterdiscordctl.
 
