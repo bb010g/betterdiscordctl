@@ -21,7 +21,7 @@ bd=
 copy_bd=
 snap=
 flatpak=
-upgrade_url='https://git.io/bdctl'
+upgrade_url='https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl'
 
 # Variables
 flavor=
@@ -56,8 +56,7 @@ Options:
                                  using the specified snap command)
       --flatpak[=COMMAND]        Use the Flatpak version of Discord (optionally
                                  using the specified flatpak command)
-      --upgrade-url=URL          URL to upgrade betterdiscordctl with
-                                 (default 'https://git.io/bdctl')
+      --upgrade-url=URL          Custom URL to upgrade betterdiscordctl with
 
 Commands:
   status (default)               Show the current Discord patch state.
