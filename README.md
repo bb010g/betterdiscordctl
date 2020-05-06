@@ -45,7 +45,7 @@ You can then keep `betterdiscordctl` up to date with one command:
 
   Increases the verbosity level, for progressively more debugging information.
 
-* `-s` / `--scan` (default `/opt:/usr/share`)
+* `-s` / `--scan` (default `/opt:/usr/share:/usr/lib64`)
 
   Changes the directories scanned for Discord installations. These are scanned
   in the order provided. Note that these do **not** end in `/discord`—if your
@@ -91,13 +91,17 @@ You can then keep `betterdiscordctl` up to date with one command:
 
   Automatically detect the default Snap directories for Discord. The `-c` flag
   is set due to Snaps apps being [confined][snapcraft-docs]. A given option
-  argument will be used as the snap(1) command to call.
+  argument will be used as the snap command to call.
 
 * `--flatpak`
 
   Automatically detect the default Flatpak directories for Discord. The `-c`
   flag is set due to Flatpak apps being [sandboxed][flatpak-docs]. A given
-  option argument will be used as the flatpak(1) command to call.
+  option argument will be used as the flatpak command to call.
+
+* `--upgrade-url` (default `https://git.io/bdctl`)
+
+  Use the specified URL for upgrading betterdiscordctl.
 
 [snapcraft-docs]: https://docs.snapcraft.io/reference/confinement
 [flatpak-docs]:   http://docs.flatpak.org/en/latest/working-with-the-sandbox.html
@@ -140,8 +144,8 @@ Updates `betterdiscordctl` to the latest version available on GitHub.
 
 * `betterdiscordctl status -s /usr/share`
 
-  Shows the status of the default Discord install in `/usr/share`, instead
-  of `/opt`.
+  Shows the status of the default Discord installation in `/usr/share`,
+  instead of `/opt`.
 
 * `betterdiscordctl install -f ptb`
 
