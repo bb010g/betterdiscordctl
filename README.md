@@ -99,6 +99,10 @@ You can then keep `betterdiscordctl` up to date with one command:
   flag is set due to Flatpak apps being [sandboxed][flatpak-docs]. A given
   option argument will be used as the flatpak command to call.
 
+* `--nix`
+
+  Automatically detect the default Nix store directories for Discord.
+
 * `--upgrade-url` (default `https://git.io/bdctl`)
 
   Use the specified URL for upgrading betterdiscordctl.

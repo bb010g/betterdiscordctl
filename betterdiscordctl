@@ -4,7 +4,7 @@ set -ueo pipefail
 shopt -s dotglob extglob nullglob
 
 # Constants
-VERSION=1.7.0
+VERSION=1.7.1
 SOURCE=$(readlink -f "${BASH_SOURCE[0]}")
 DISABLE_UPGRADE=
 
@@ -21,6 +21,7 @@ bd=
 copy_bd=
 snap=
 flatpak=
+nix=
 upgrade_url='https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl'
 
 # Variables
@@ -56,6 +57,7 @@ Options:
                                  using the specified snap command)
       --flatpak[=COMMAND]        Use the Flatpak version of Discord (optionally
                                  using the specified flatpak command)
+      --nix                      Look for Discord in the nix store
       --upgrade-url=URL          Custom URL to upgrade betterdiscordctl with
 
 Commands:
@@ -203,6 +205,9 @@ while :; do
       ;;
     --flatpak=)
       die_non_empty '--flatpak'
+      ;;
+    --nix)
+      nix=yes
       ;;
     --upgrade-url)
       if [[ ${2+x} ]]; then upgrade_url=$2; shift
@@ -365,6 +370,7 @@ bdc_main() {
   if [[ -z $discord ]]; then
     if [[ $snap ]]; then bdc_snap
     elif [[ $flatpak ]]; then bdc_flatpak
+    elif [[ $nix ]]; then bdc_nix
     else bdc_scan; fi
   else
     flavor=$flavors
@@ -464,6 +470,36 @@ bdc_flatpak() {
   else
     die 'ERROR: Discord installation not found.'
   fi
+}
+
+bdc_nix() {
+  for flavor in "${flavors[@]}"; do
+    verbose 2 "VV: Trying flavor '$flavor'"
+    if [[ ${flavor,,} == ptb ]]; then
+      flavor=PTB
+    elif [[ ${flavor,,} == canary ]]; then
+      flavor=Canary
+    fi
+    scandir=$(nix-store -r "$(which "Discord$flavor")")
+    verbose 2 "VV: Scanning $scandir"
+    discord="$scandir/opt/Discord$flavor"
+    if [[ -d $discord ]]; then
+      verbose 1 "V: Using Discord at $discord"
+      discord_config=$xdg_config/discord${flavor,,}
+      if [[ ! -d $discord_config ]]; then
+        printf 'WARN: Config directory not found for Discord %s (%s, %s).\n' \
+          "$flavor" "$discord" "$discord_config" >&2
+        continue
+      fi
+      if [[ -z $modules ]]; then
+        bdc_find_modules
+      else
+        # --modules
+        [[ -d $modules ]] || die 'ERROR: Discord modules directory not found.'
+      fi
+      break
+    fi
+  done
 }
 
 bdc_kill() {
