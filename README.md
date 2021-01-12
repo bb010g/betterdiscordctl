@@ -9,6 +9,7 @@ A manager for BetterDiscord on Linux.
 - Arch: https://aur.archlinux.org/packages/betterdiscordctl-git
 - Ubuntu: https://launchpad.net/~chronobserver/+archive/ubuntu/betterdiscordctl
 - Fedora: https://copr.fedorainfracloud.org/coprs/observeroftime/betterdiscordctl
+- NixOS: https://search.nixos.org/packages?channel=unstable&query=betterdiscordctl&show=betterdiscordctl
 
 ### Manual
 
