@@ -31,6 +31,7 @@ xdg_config=${XDG_CONFIG_HOME:-$HOME/.config}
 data=${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl
 snap_bin=snap
 flatpak_bin=flatpak
+nix_bin='nix-store'
 
 show_help() {
   cat << EOF
@@ -42,22 +43,20 @@ Options:
   -v, --verbose                  Increase verbosity
   -s, --scan=DIRECTORIES         Colon-separated list of directories to scan for
                                  a Discord installation
-                                 (default '/opt:/usr/share')
   -f, --flavors=FLAVORS          Colon-separated list of Discord flavors
-                                 (default ':canary:ptb')
   -d, --discord=DIRECTORY        Use the specified Discord directory
                                  (requires --modules)
   -m, --modules=DIRECTORY        Use the specified Discord modules directory
   -r, --bd-repo=REPOSITORY       Use the specified Git repo for BetterDiscord
       --bd-repo-branch=BRANCH    Use the specified Git branch for BetterDiscord
-                                 (default 'stable16')
   -b, --betterdiscord=DIRECTORY  Use the specified BetterDiscord directory
   -c, --copy-bd                  Copy BD directory instead of symlinking
       --snap[=COMMAND]           Use the Snap version of Discord (optionally
                                  using the specified snap command)
       --flatpak[=COMMAND]        Use the Flatpak version of Discord (optionally
                                  using the specified flatpak command)
-      --nix                      Look for Discord in the nix store
+      --nix[=COMMAND]            Look for Discord in the nix store (optionally
+                                 using the specified nix-store command)
       --upgrade-url=URL          Custom URL to upgrade betterdiscordctl with
 
 Commands:
@@ -208,6 +207,13 @@ while :; do
       ;;
     --nix)
       nix=yes
+      ;;
+    --nix=?*)
+      nix=yes
+      nix_bin=${1#*=}
+      ;;
+    --nix=)
+      die_non_empty '--nix'
       ;;
     --upgrade-url)
       if [[ ${2+x} ]]; then upgrade_url=$2; shift
@@ -480,7 +486,7 @@ bdc_nix() {
     elif [[ ${flavor,,} == canary ]]; then
       flavor=Canary
     fi
-    scandir=$(nix-store -r "$(which "Discord$flavor")")
+    scandir=$("$nix_bin" -r "$(which "Discord$flavor")")
     verbose 2 "VV: Scanning $scandir"
     discord="$scandir/opt/Discord$flavor"
     if [[ -d $discord ]]; then
@@ -506,7 +512,7 @@ bdc_kill() {
   declare process_name=Discord
   [[ $flavor ]] && process_name+=" $flavor"
   printf 'Killing %s processes...\n' "$process_name" >&2
-  pkill -exi -KILL "discord-?$flavor" || printf 'No active processes found.\n' >&2
+  pkill -exi -KILL "discord${flavor:0:8}" || printf 'No active processes found.\n' >&2
 }
 
 bd_injector() {

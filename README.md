@@ -102,7 +102,8 @@ You can then keep `betterdiscordctl` up to date with one command:
 
 * `--nix`
 
-  Automatically detect the default Nix store directories for Discord.
+  Automatically detect the default Nix store directories for Discord. A given
+  option argument will be used as the nix-store command to call.
 
 * `--upgrade-url` (default `https://git.io/bdctl`)
 
