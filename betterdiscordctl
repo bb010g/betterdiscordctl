@@ -11,27 +11,21 @@ DISABLE_UPGRADE=
 # Options
 cmd=status
 verbosity=0
-scan=(/opt /usr/share /usr/lib64)
 flavors=('' canary ptb)
-discord=
 modules=
+asar=
 bd_repo='https://github.com/rauenzi/BetterDiscordApp'
-bd_repo_branch=injector
-bd=
-copy_bd=
+bd_repo_release=latest
 snap=
 snap_bin=snap
 flatpak=
 flatpak_bin=flatpak
-nix=
-nix_store_bin='nix-store'
 upgrade_url='https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl'
 
 # Variables
 flavor=
 core=
 xdg_config=${XDG_CONFIG_HOME:-$HOME/.config}
-data=${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl
 
 show_help() {
   cat << EOF
@@ -41,29 +35,22 @@ Options:
   -V, --version                  Display version info and exit
   -h, --help                     Display this help message and exit
   -v, --verbose                  Increase verbosity
-  -s, --scan=DIRECTORIES         Colon-separated list of directories to scan for
-                                 a Discord installation
   -f, --flavors=FLAVORS          Colon-separated list of Discord flavors
-  -d, --discord=DIRECTORY        Use the specified Discord directory
-                                 (requires "--modules")
+                                 (default: ":canary:ptb")
   -m, --modules=DIRECTORY        Use the specified Discord modules directory
-  -r, --bd-repo=REPOSITORY       Use the specified Git repo for BetterDiscord
-      --bd-repo-branch=BRANCH    Use the specified Git branch for BetterDiscord
-  -b, --betterdiscord=DIRECTORY  Use the specified BetterDiscord directory
-  -c, --copy-bd                  Copy BD directory instead of symlinking
+  -r, --bd-repo=REPOSITORY       Use the specified git repo for BetterDiscord
+      --bd-repo-release=RELEASE  Use the specified release for BetterDiscord
+  -b, --betterdiscord=FILE       Use the specified betterdiscord.asar file
       --snap                     Use the Snap version of Discord
       --snap-bin=EXECUTABLE      Use the specified "snap" executable
       --flatpak                  Use the Flatpak version of Discord
       --flatpak-bin=EXECUTABLE   Use the specified "flatpak" executable
-      --nix                      Look for Discord in the Nix store
-      --nix-store-bin=EXECUTABLE Use the specified "nix-store" executable
       --upgrade-url=URL          Custom URL to upgrade betterdiscordctl with
 
 Commands:
   status (default)               Show the current Discord patch state.
   install                        Install BetterDiscord.
   reinstall                      Reinstall BetterDiscord.
-  update                         Update BetterDiscord.
   uninstall                      Uninstall BetterDiscord.
   upgrade                        Update betterdiscordctl.
 EOF
@@ -77,7 +64,7 @@ verbose() {
 }
 
 die() {
-  while [ $# -gt 0 ]; do
+  while (( $# > 0 )); do
     printf '%s\n' "$1" >&2
     shift
   done
@@ -103,7 +90,7 @@ die_non_empty_option() {
 while :; do
   if [[ -z ${1+x} ]]; then break; fi
   case $1 in
-    status|install|reinstall|update|uninstall|upgrade)
+    status|install|reinstall|uninstall|upgrade)
       cmd=$1
       ;;
     -V|--version)
@@ -119,13 +106,6 @@ while :; do
       ((++verbosity))
       ;;
     -v=*|--verbose=*) die_no_option "${1%%=*}" ;;
-    -s|--scan)
-      if [[ ${2+x} ]]; then IFS=':' read -ra scan <<< "$2:"; shift
-      else die_option "$1"; fi
-      ;;
-    --scan=*)
-      IFS=':' read -ra scan <<< "${1#*=}:"
-      ;;
     -f|--flavors)
       if [[ ${2+x} ]]; then IFS=':' read -ra flavors <<< "$2:"; shift
       else die_option "$1"; fi
@@ -133,42 +113,31 @@ while :; do
     --flavors=*)
       IFS=':' read -ra flavors <<< "${1#*=}:"
       ;;
-    -d|--discord)
-      if [[ ${2:+x} ]]; then discord=$2; shift
-      else die_non_empty_option "$1"; fi
-      ;;
-    --discord=?*) discord=${1#*=} ;;
-    --discord=) die_non_empty_option "${1%%=*}" ;;
     -m|--modules)
       if [[ ${2:+x} ]]; then modules=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
     --modules=?*) modules=${1#*=} ;;
     --modules=) die_non_empty_option "${1%%=*}" ;;
-    --bd-repo-branch)
-      if [[ ${2:+x} ]]; then bd_repo_branch=$2; shift
+    -b|--betterdiscord)
+      if [[ ${2+x} ]]; then asar=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --bd-repo-branch=?*) bd_repo_branch=${1#*=} ;;
-    --bd-repo-branch=) die_non_empty_option "${1%%=*}" ;;
+    --betterdiscord=?*)
+      asar=${1#*=}
+      ;;
+    --betterdiscord=) die_non_empty_option "${1%%=*}" ;;
     -r|--bd-repo)
       if [[ ${2:+x} ]]; then bd_repo=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --bd-repo=?*) bd_repo=${1#*=} ;;
-    --bd-repo=) die_non_empty_option "${1%%=*}" ;;
-    -b|--betterdiscord)
-      if [[ ${2:+x} ]]; then bd=$2; shift
+    --bd-repo-release)
+      if [[ ${2+x} ]]; then bd_repo_release=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --betterdiscord=?*) bd=${1#*=} ;;
-    --betterdiscord=) die_non_empty_option "${1%%=*}" ;;
-    -c|--copy-bd) copy_bd=yes ;;
-    -c=*|--copy-bd=*) die_no_option "${1%%=*}" ;;
-    --snap)
-      snap=yes
-      copy_bd=yes
-      ;;
+    --bd-repo-release=?*) bd_repo_release=${1#*=} ;;
+    --bd-repo-release=) die_non_empty_option "${1%%=*}" ;;
+    --snap) snap=yes ;;
     --snap=*) die_no_option "${1%%=*}" ;;
     --snap-bin)
       if [[ ${2:+x} ]]; then snap_bin=$2; shift
@@ -184,14 +153,6 @@ while :; do
       ;;
     --flatpak-bin=?*) flatpak_bin=${1#*=} ;;
     --flatpak-bin=) die_non_empty_option "${1%%=*}" ;;
-    --nix) nix=yes ;;
-    --nix=*) die_no_option "${1%%=*}" ;;
-    --nix-store-bin)
-      if [[ ${2:+x} ]]; then nix_store_bin=$2; shift
-      else die_non_empty_option "$1"; fi
-      ;;
-    --nix-store-bin=?*) nix_store_bin=${1#*=} ;;
-    --nix-store-bin=) die_non_empty_option "${1%%=*}" ;;
     --upgrade-url)
       if [[ ${2:+x} ]]; then upgrade_url=$2; shift
       else die_non_empty_option "$1"; fi
@@ -211,102 +172,64 @@ while :; do
   shift
 done
 
-mkdir -p "$data"
-[[ -f $data/bd_map ]] || touch "$data/bd_map"
-
 # Commands
 
 bdc_status() {
   index_mod=no
-  linked_dir=no
-  linked_repo=no
-  if [[ -d $core/injector ]]; then
-    if [[ -h $core/injector ]]; then
-      linked_dir=$(readlink "$core/injector")
-      if pushd "$core/injector" >/dev/null; then
-        linked_repo=$(git remote get-url origin 2>/dev/null || printf 'no\n')
-        popd >/dev/null
-      else
-        linked_dir="(broken link) $linked_dir"
-      fi
-    fi
-  fi
-  if [[ ! -f $core/index.js ]]; then
-    index_mod='(missing) no'
-  else
-    grep -q 'injector' "$core/index.js" && index_mod=yes
-  fi
+  grep -q betterdiscord.asar "$core/index.js" && index_mod=yes
 
-  printf 'Discord: %s
-Modules: %s
-Index modified: %s
-Linked injector directory: %s
-Linked injector repository: %s\n' \
-    "$discord" "$modules" "$index_mod" "$linked_dir" "$linked_repo"
+  asar=${asar:-$(bd_data)/betterdiscord.asar}
+  [[ -f $asar ]] || asar='not installed'
+
+  printf 'Modules: %s
+BetterDiscord: %s
+Index modified: %s\n' \
+    "$modules" "$asar" "$index_mod"
 }
 
 bdc_install() {
-  [[ -d $core/injector ]] && die 'ERROR: Already installed.'
+  grep -q betterdiscord.asar "$core/index.js" && die 'ERROR: Already installed.'
 
   # Clean up legacy cruft
-  if [[ -d $core/core ]]; then
-    printf 'Removing legacy core directory...\n' >&2
-    rm -rf "$core/core"
+  if [[ -d $core/injector ]]; then
+    printf 'Removing legacy injector directory...\n' >&2
+    rm -rf "$core/injector"
   fi
 
+  bd_asar
   bd_patch
-  bd_injector
 
   printf 'Installed. (Restart Discord if necessary.)\n' >&2
 }
 
 bdc_reinstall() {
-  [[ -d $core/injector ]] || die 'Not installed.'
+  grep -q betterdiscord.asar "$core/index.js" || die 'Not installed.'
 
   bdc_kill
 
-  verbose 1 'V: Removing old injector folder.'
-  rm -rf "$core/injector"
+  # Clean up legacy cruft
+  if [[ -d $core/injector ]]; then
+    printf 'Removing legacy injector directory...\n' >&2
+    rm -rf "$core/injector"
+  fi
 
+  bd_asar
   bd_patch
-  bd_injector
 
   printf 'Reinstalled.\n' >&2
 }
 
-bdc_update() {
-  [[ -d $core/injector ]] || die 'Not installed.'
-
-  if ! pushd "$core/injector" >/dev/null; then
-    if [[ -h $core/injector ]]; then
-      die 'ERROR: BetterDiscord injector symbolic link is broken.'
-    else
-      die 'ERROR: BetterDiscord injector location is not a directory.'
-    fi
-  fi
-  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    printf 'Updating Git repository...\n' >&2
-    git fetch origin "$bd_repo_branch"
-    git reset --hard FETCH_HEAD
-  else
-    printf 'WARN: No Git repository found.\n' >&2
-  fi
-  popd >/dev/null
-}
-
 bdc_uninstall() {
-  [[ -d $core/injector ]] || die 'Not installed.'
+  grep -q betterdiscord.asar "$core/index.js" || die 'Not installed.'
+
+  # Clean up legacy cruft
+  if [[ -d $core/injector ]]; then
+    printf 'Removing legacy injector directory...\n' >&2
+    rm -rf "$core/injector"
+  fi
 
   bdc_kill
   bd_unpatch
-
-  # Remove managed BD repo if applicable
-  bd_n=$(bd_map_get_dir "$discord" | bd_map_entry_n)
-  bd_map_remove "$discord"
-  if [[ -z $(bd_map_get_n "$bd_n") ]]; then
-    verbose 2 "VV: Removing $data/bd/$bd_n"
-    rm -rf "$data/bd/$bd_n"
-  fi
 
   printf 'Uninstalled.\n' >&2
 }
@@ -346,49 +269,31 @@ bdc_upgrade() {
 # Implementation functions
 
 bdc_main() {
-  if [[ -z $discord ]]; then
+  if [[ -z $modules ]]; then
     if [[ $snap ]]; then bdc_snap
     elif [[ $flatpak ]]; then bdc_flatpak
-    elif [[ $nix ]]; then bdc_nix
     else bdc_scan; fi
   else
-    flavor=$flavors
-    # --discord and --modules
-    [[ -z $modules ]] && die_with_help 'ERROR: "--discord" requires "--modules" to also be set.'
-    [[ -d $discord ]] || die 'ERROR: Discord installation not found.'
     [[ -d $modules ]] || die 'ERROR: Discord modules directory not found.'
+    : "${modules%/*/modules}"; flavor=${_##*/discord}
   fi
-  [[ -d $discord ]] || die 'ERROR: Discord installation not found. Try specifying it with "--discord".'
   core=$modules/discord_desktop_core
-  [[ -d $core ]] || die "ERROR: Directory 'discord_desktop_core' not found in $(readlink -f "$modules")"
+  [[ -d $core ]] || die "ERROR: Directory 'discord_desktop_core' not found in $modules"
 }
 
 bdc_scan() {
-  for scandir in "${scan[@]}"; do
-    verbose 2 "VV: Scanning $scandir"
-    for flavor in "${flavors[@]}"; do
-      verbose 2 "VV: Trying flavor '$flavor'"
-      shopt -s nocaseglob
-      for discord in "$scandir"/discord?(-)"$flavor"; do
-        shopt -u nocaseglob
-        if [[ -d $discord ]]; then
-          verbose 1 "V: Using Discord at $discord"
-          discord_config=$xdg_config/discord${flavor,,}
-          if [[ ! -d $discord_config ]]; then
-            printf 'WARN: Config directory not found for Discord %s (%s, %s).\n' \
-              "$flavor" "$discord" "$discord_config" >&2
-            continue 2
-          fi
-          if [[ -z $modules ]]; then
-            bdc_find_modules
-          else
-            # --modules
-            [[ -d $modules ]] || die 'ERROR: Discord modules directory not found.'
-          fi
-          break 3
-        fi
-      done
-    done
+  for flavor in "${flavors[@]-}"; do
+    verbose 2 "VV: Trying flavor '$flavor'"
+    discord_config=$xdg_config/discord${flavor,,}
+    if [[ ! -d $discord_config ]]; then
+      die 'ERROR: Discord config directory not found.'
+    fi
+    if [[ -z $modules ]]; then
+      bdc_find_modules
+    elif [[ ! -d $modules ]]; then
+      die 'ERROR: Discord modules directory not found.'
+    fi
+    break
   done
 }
 
@@ -403,15 +308,9 @@ bdc_find_modules() {
 bdc_snap() {
   # shellcheck disable=SC2016
   # Expansion should happen inside snap's shell.
-  snap_location=$("$snap_bin" run --shell discord <<< $'printf -- \'%s\n\' "$SNAP" 1>&3' 3>&1)
-  discord=${snap_location:?}/usr/share/discord
-  verbose 2 "VV: Checking $discord"
-  if [[ -d $discord ]]; then
-    verbose 1 "V: Using Discord at $discord"
-    # shellcheck disable=SC2016
-    # Expansion should happen inside snap's shell.
-    xdg_config=$("$snap_bin" run --shell discord <<< $'printf -- \'%s/.config\n\' "$SNAP_USER_DATA" 1>&3' 3>&1)
-    discord_config=$xdg_config/discord
+  xdg_config=$("$snap_bin" run --shell discord <<< $'printf -- \'%s/.config\n\' "$SNAP_USER_DATA" 1>&3' 3>&1)
+  discord_config=$xdg_config/discord
+  if [[ -d $discord_config ]]; then
     bdc_find_modules
   else
     die 'ERROR: Discord installation not found.'
@@ -419,145 +318,53 @@ bdc_snap() {
 }
 
 bdc_flatpak() {
-  flatpak_version=$("$flatpak_bin" --version | sed -n 's/Flatpak //p')
-  if [[ $(Semver::compare "$flatpak_version" '1.0.0') -eq -1 ]]; then
-    die 'ERROR: You are using an unsupported version of Flatpak.' \
-        'See https://github.com/bb010g/betterdiscordctl/issues/45'
-  fi
-  # flatpak sucks and doesn't use stderr for warnings.
-  # https://github.com/flatpak/flatpak/blob/13e449b/app/flatpak-main.c#L259-L286
-  # This really should be better for directories with newlines, but...
-  # We're just going to grab the last line and hope for the best.
-  flatpak_location=$("$flatpak_bin" info --show-location com.discordapp.Discord)
-  flatpak_location=${flatpak_location##*$'\n'}
-  if [[ -d ${flatpak_location:?}/files/discord ]]; then
-    discord=$flatpak_location/files/discord
-  else
-    discord=$flatpak_location/files/extra
-  fi
-  verbose 2 "VV: Checking $discord"
-  if [[ -d $discord ]]; then
-    verbose 1 "V: Using Discord at $discord"
-    # shellcheck disable=SC2016
-    # Expansion should happen inside flatpak's shell.
-    flatpak_config=$("$flatpak_bin" run --command=sh com.discordapp.Discord -c $'printf -- \'%s\n\' "$XDG_CONFIG_HOME"')
-    discord_config=${flatpak_config:-$HOME/.var/app/com.discordapp.Discord/config}/discord
-    if [[ ! -d $discord_config ]]; then
-      printf 'WARN: Config directory not found for Discord (%s, %s).\n' "$discord" "$discord_config" >&2
-    fi
+  # shellcheck disable=SC2016
+  # Expansion should happen inside flatpak's shell.
+  xdg_config=$("$flatpak_bin" run --command=sh com.discordapp.Discord -c $'printf -- \'%s\n\' "$XDG_CONFIG_HOME"')
+  discord_config=${xdg_config:-$HOME/.var/app/com.discordapp.Discord/config}/discord
+  if [[ -d $discord_config ]]; then
     bdc_find_modules
   else
     die 'ERROR: Discord installation not found.'
   fi
 }
 
-bdc_nix() {
-  for flavor in "${flavors[@]}"; do
-    verbose 2 "VV: Trying flavor '$flavor'"
-    if [[ ${flavor,,} == ptb ]]; then
-      flavor=PTB
-    elif [[ ${flavor,,} == canary ]]; then
-      flavor=Canary
-    fi
-    scandir=$("$nix_store_bin" -r "$(which "Discord$flavor")")
-    verbose 2 "VV: Scanning $scandir"
-    discord="$scandir/opt/Discord$flavor"
-    if [[ -d $discord ]]; then
-      verbose 1 "V: Using Discord at $discord"
-      discord_config=$xdg_config/discord${flavor,,}
-      if [[ ! -d $discord_config ]]; then
-        printf 'WARN: Config directory not found for Discord %s (%s, %s).\n' \
-          "$flavor" "$discord" "$discord_config" >&2
-        continue
-      fi
-      if [[ -z $modules ]]; then
-        bdc_find_modules
-      else
-        # --modules
-        [[ -d $modules ]] || die 'ERROR: Discord modules directory not found.'
-      fi
-      break
-    fi
-  done
-}
-
 bdc_kill() {
-  declare process_name=Discord
-  [[ $flavor ]] && process_name+=" $flavor"
-  printf 'Killing %s processes...\n' "$process_name" >&2
+  declare process_name="Discord $flavor"
+  printf 'Killing %s processes...\n' "${process_name% }" >&2
   pkill -exi -KILL "discord${flavor:0:8}" || printf 'No active processes found.\n' >&2
 }
 
-bd_injector() {
-  if [[ -z $bd ]]; then
-    bd=$data/bd/$(bd_map_add "$discord" "$bd_repo")
-    if [[ ! -d $bd ]]; then
-      printf 'Cloning %s...\n' "$bd_repo" >&2
-      git clone "$bd_repo" -b "$bd_repo_branch" --depth=1 --single-branch "$bd"
-    fi
-  fi
+bd_data() {
+  printf '%s/BetterDiscord/data' "$xdg_config"
+}
 
-  if [[ $copy_bd ]]; then
-    verbose 1 'V: Copying BetterDiscord injector...'
-    cp -r "$bd" "$core/injector"
+bd_asar() {
+  if [[ -z $asar ]]; then
+    declare release=$bd_repo/releases/$bd_repo_release
+    verbose 1 "VV: BetterDiscord release URL: $release"
+    verbose 1 "V: Downloading betterdiscord.asar..."
+    curl -LSso "$(bd_data)/betterdiscord.asar" \
+      --create-dirs "$release/download/betterdiscord.asar"
   else
-    verbose 1 'V: Linking BetterDiscord injector...'
-    ln -s "$bd" "$core/injector"
+    verbose 2 "VV: BetterDiscord archive: $asar"
+    if [[ ${flatpak+x} ]] || [[ ${snap+x} ]]; then
+      verbose 'V: Copying BetterDiscord archive...'
+      install -D "$asar" "$(bd_data)/betterdiscord.asar"; asar=$_
+    fi
   fi
 }
 
 bd_patch() {
-  if ! grep -q 'injector' "$core/index.js"; then
-    verbose 1 'V: Injecting into index.js...'
-    sed -i "$core/index.js" \
-      -e "1i require('./injector');" \
-      -e "s/core'/core.asar'/"
-  fi
+  verbose 1 'V: Injecting into index.js...'
+  printf 'require("%s");
+module.exports = require("./core.asar");\n' \
+  "${asar//\"/\\\"}" > "$core/index.js"
 }
 
 bd_unpatch() {
   verbose 1 'V: Removing BetterDiscord injection...'
-  sed -i "$core/index.js" \
-    -e '/injector/d' \
-    -e "s/core'/core.asar'/"
-  rm -rf "$core/injector"
-}
-
-bd_map_entry_n() {
-  sed 's/^.*\t\t.*\t\(.*\)$/\1/' "$@"
-}
-
-bd_map_fresh() {
-  verbose 2 'VV: Generating fresh bd_map number...'
-  bd_map_entry_n "$data/bd_map" | sort | awk \
-    'BEGIN {max=-1} NF != 0 {if ($1>max+1) {exit}; max=$1} END {print max+1}'
-}
-
-bd_map_add() {
-  entry=$(bd_map_get_repo "$2")
-  if [[ $entry ]]; then
-    num=$(head -n1 <<< "$entry" | bd_map_entry_n)
-  else
-    num=$(bd_map_fresh)
-  fi
-  printf '%s\t\t%s\t%s\n' "$1" "$2" "$num" >> "$data/bd_map"
-  printf '%s\n' "$num"
-}
-
-bd_map_get_dir() {
-  grep -F "$1"$'\t\t' "$data/bd_map"
-}
-
-bd_map_get_repo() {
-  grep -F $'\t\t'"$1"$'\t' "$data/bd_map"
-}
-
-bd_map_get_n() {
-  grep $'\t'"$1\$" "$data/bd_map"
-}
-
-bd_map_remove() {
-  sed -i "$data/bd_map" -e "\\%$1\\t\\t%d"
+  printf 'module.exports = require("./core.asar");\n' > "$core/index.js"
 }
 
 # Included from https://github.com/bb010g/Semver.sh , under the MIT License.
@@ -658,10 +465,6 @@ case "$cmd" in
   reinstall)
     bdc_main
     bdc_reinstall
-    ;;
-  update)
-    bdc_main
-    bdc_update
     ;;
   uninstall)
     bdc_main

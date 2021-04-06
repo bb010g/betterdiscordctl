@@ -13,9 +13,9 @@ A manager for BetterDiscord on Linux.
 
 ### Manual
 
-Requires `git` which you can install from your distro's [package manager][git-packages].
+Requires `curl` which you can install from your distro's [package manager][curl-packages].
 
-[git-packages]:  https://git-scm.com/download/linux/
+[curl-packages]: https://curl.se/download.html#Linux
 
 You can then install as follows (`#` means that a command needs root, which you
 can get by prefixing it with `sudo`):
@@ -46,23 +46,12 @@ You can then keep `betterdiscordctl` up to date with one command:
 
   Increases the verbosity level, for progressively more debugging information.
 
-* `-s` / `--scan` (default `/opt:/usr/share:/usr/lib64`)
-
-  Changes the directories scanned for Discord installations. These are scanned
-  in the order provided. Note that these do **not** end in `/discord`—if your
-  Discord installation is at `/opt/discord`, then `/opt` should be scanned.
-
 * `-f` / `--flavors` (default `:canary:ptb`)
 
   When scanning, looks for installations with the given suffixes (case
   insensitive, both hyphenated and unhyphenated). Stable is `''`, as it has no
   suffix. Note that **no** spaces follow colons. Your Discord flavor probably
   doesn't have a space in it, so don't use any in here.
-
-* `-d` / `--discord` (requires `--modules`)
-
-  Skip scanning and use the Discord installation directory specified. This
-  **does** probably end in `/discord`.
 
 * `-m` / `--modules`
 
@@ -71,27 +60,19 @@ You can then keep `betterdiscordctl` up to date with one command:
 
 * `-r` / `--bd-repo` (default `https://github.com/rauenzi/BetterDiscordApp`)
 
-  When installing BetterDiscord, use the specified Git repository. Does _not_
-  affect updates. Defaults to Zerebos's BandagedBD fork.
+  When installing BetterDiscord, use the specified Git repository.
 
-* `--bd-repo-branch` (default `injector`)
+* `--bd-repo-release` (default `latest`)
 
-  When downloading from `--bd-repo`, use this branch.
+  When downloading from `--bd-repo`, use this release.
 
 * `-b` / `--betterdiscord`
 
-  Instead of maintaining a local clone of BetterDiscord, use the specified
-  directory.
-
-* `-c` / `--copy-bd`
-
-  Instead of using a symbolic link, copy the BetterDiscord directory into
-  Discord's modules.
+  Instead of downloading a copy of `betterdiscord.asar`, use the specified file.
 
 * `--snap`
 
-  Automatically detect the default Snap directories for Discord. The `-c` flag
-  is set due to Snaps apps being [confined][snapcraft-docs].
+  Automatically detect the default Snap directory for Discord.
 
 * `--snap-bin` (default `snap`)
 
@@ -99,27 +80,15 @@ You can then keep `betterdiscordctl` up to date with one command:
 
 * `--flatpak`
 
-  Automatically detect the default Flatpak directories for Discord. The `-c`
-  flag is set due to Flatpak apps being [sandboxed][flatpak-docs].
+  Automatically detect the default Flatpak directory for Discord.
 
 * `--flatpak-bin` (default `flatpak`)
 
   Calls this `flatpak` executable.
 
-* `--nix`
-
-  Automatically detect the default Nix store directories for Discord.
-
-* `--nix-store-bin` (default `nix-store`)
-
-  Calls this `nix-store` executable.
-
 * `--upgrade-url` (default `https://git.io/bdctl`)
 
   Use the specified URL for upgrading betterdiscordctl.
-
-[snapcraft-docs]: https://docs.snapcraft.io/reference/confinement
-[flatpak-docs]:   http://docs.flatpak.org/en/latest/working-with-the-sandbox.html
 
 ## Commands
 
@@ -135,14 +104,6 @@ Installs BetterDiscord, managing what's necessary by default.
 
 Reinstalls BetterDiscord, removing the old files.
 
-### `update`
-
-Updates BetterDiscord, updating your local repository if present
-(`origin` branch). Also cleans up any old patch methods, if found.
-
-(Advanced users should avoid using this if locally modifying their
-linked repositories, and should instead manually fetch and update.)
-
 ### `uninstall`
 
 Uninstalls BetterDiscord, removing the managed repository if used.
@@ -157,11 +118,6 @@ Updates `betterdiscordctl` to the latest version available on GitHub.
 
   Works like `betterdiscordctl status`.
 
-* `betterdiscordctl status -s /usr/share`
-
-  Shows the status of the default Discord installation in `/usr/share`,
-  instead of `/opt`.
-
 * `betterdiscordctl install -f ptb`
 
   Installs BetterDiscord to the PTB flavor, instead of the default.
@@ -170,9 +126,9 @@ Updates `betterdiscordctl` to the latest version available on GitHub.
 
   Reinstalls BetterDiscord to Discord Canary.
 
-* `betterdiscordctl update --flatpak`
+* `betterdiscordctl status --flatpak`
 
-  Updates BetterDiscord for a Discord installed via Flatpak.
+  Shows the BetterDiscord status for a Discord installed via Flatpak.
 
 * `betterdiscordctl uninstall --snap`
 
@@ -182,15 +138,7 @@ Updates `betterdiscordctl` to the latest version available on GitHub.
 
 * `$XDG_DATA_HOME/betterdiscordctl` (fallback `~/.local/share/betterdiscordctl`)
 
-  `betterdiscordctl`'s machine-specific data directory.
-
-* `$XDG_DATA_HOME/betterdiscordctl/bd_map`
-
-  A mapping of current Discord installations to BetterDiscord clones.
-
-* `$XDG_DATA_HOME/betterdiscordctl/bd`
-
-  A directory of BetterDiscord clones, indexed by `bd_map`.
+  **No longer used and may be deleted in a later release.**
 
 * `$XDG_CONFIG_HOME/BetterDiscord` (fallback `~/.config/BetterDiscord`)
 
