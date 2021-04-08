@@ -100,11 +100,11 @@ while :; do
       ((++verbosity))
       ;;
     -f|--flavors)
-      if [[ ${2+x} ]]; then IFS=':' read -ra flavors <<< "$2"; shift
+      if [[ ${2+x} ]]; then IFS=':' read -ra flavors <<< "$2:"; shift
       else die_non_empty '--flavors'; fi
       ;;
     --flavors=?*)
-      IFS=':' read -ra flavors <<< "${1#*=}"
+      IFS=':' read -ra flavors <<< "${1#*=}:"
       ;;
     --flavors=)
       die_non_empty '--flavors'
