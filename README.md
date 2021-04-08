@@ -14,7 +14,7 @@ A manager for BetterDiscord on Linux.
 ### Manual
 
 Requires `curl`, which you can install from your distro's
-[package manager][curl-packages].
+[package manager][curl-packages], if it's not already installed.
 
 [curl-packages]: https://curl.se/download.html#Linux
 
@@ -59,19 +59,20 @@ You can then keep `betterdiscordctl` up to date with one command:
   Disregards scanning results and uses the specified modules directory (found
   inside Discord's user-specific storage directory).
 
-* `-r` / `--bd-repo` (default `https://github.com/rauenzi/BetterDiscordApp`)
+* `-r` / `--bd-repo` (default `rauenzi/BetterDiscordApp`)
 
   When installing BetterDiscord, use the specified GitHub repository.
   Defaults to upstream BetterDiscord.
 
-* `--bd-repo-release` (default `latest`)
+* `-R` / `--bd-release` (default `latest`)
 
   When downloading from `--bd-repo`, use this release.
 
-* `--bd-asar`
+* `-a` / `--bd-asar`
 
-  Instead of downloading `betterdiscord.asar` from a release, copy the
-  specified BetterDiscord asar file.
+  Instead of downloading `betterdiscord.asar` from a release, use the
+  specified BetterDiscord asar file. This flag is mostly meant for
+  **developers** testing custom BetterDiscord builds.
 
 * `--flatpak`
 
@@ -121,21 +122,21 @@ Updates `betterdiscordctl` to the latest version available on GitHub.
 
   Works like `betterdiscordctl status`.
 
-* `betterdiscordctl status --flatpak`
+* `betterdiscordctl status -f ptb`
 
-  Shows the BetterDiscord status for a Discord installed via Flatpak.
+  Shows the BetterDiscord for the PTB flavor.
 
-* `betterdiscordctl install -f ptb`
+* `betterdiscordctl install -f canary`
 
-  Installs BetterDiscord to the PTB flavor, instead of the default.
+  Installs BetterDiscord to the Canary flavor.
 
-* `betterdiscordctl reinstall -f canary`
+* `betterdiscordctl reinstall --flatpak`
 
-  Reinstalls BetterDiscord to Discord Canary.
+  Reinstalls BetterDiscord to a Discord installed via Flatpak.
 
 * `betterdiscordctl uninstall --snap`
 
-  Uninstalls BetterDiscord for a Discord installed via Snap.
+  Uninstalls BetterDiscord from a Discord installed via Snap.
 
 ## Files
 

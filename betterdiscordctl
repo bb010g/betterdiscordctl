@@ -13,9 +13,9 @@ cmd=status
 verbosity=0
 flavors=('' canary ptb)
 modules=
+bd_repo='rauenzi/BetterDiscordApp'
+bd_release=latest
 bd_asar=
-bd_repo='https://github.com/rauenzi/BetterDiscordApp'
-bd_repo_release=latest
 flatpak=
 flatpak_bin=flatpak
 snap=
@@ -29,7 +29,7 @@ xdg_config=${XDG_CONFIG_HOME:-$HOME/.config}
 data=${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl
 discord_config=
 bd_config=$xdg_config/BetterDiscord
-bd_data_bd_asar=$bd_config/data/betterdiscord.asar
+bd_asar_dest=$bd_config/data/betterdiscord.asar
 
 show_help() {
   cat << EOF
@@ -43,8 +43,8 @@ Options:
                                  (default: ":canary:ptb")
   -m, --modules=DIRECTORY        Use the specified Discord modules directory
   -r, --bd-repo=REPOSITORY       Use the specified git repo for BetterDiscord
-      --bd-repo-release=RELEASE  Use the specified release for BetterDiscord
-      --bd-asar=FILE             Use the specified betterdiscord.asar file
+  -R, --bd-release=RELEASE       Use the specified release for BetterDiscord
+  -a, --bd-asar=FILE             Use the specified betterdiscord.asar file
       --flatpak                  Use the Flatpak version of Discord
       --flatpak-bin=EXECUTABLE   Use the specified "flatpak" executable
       --snap                     Use the Snap version of Discord
@@ -123,22 +123,24 @@ while :; do
       ;;
     --modules=?*) modules=${1#*=} ;;
     --modules=) die_non_empty_option "${1%%=*}" ;;
-    --bd-asar)
-      if [[ ${2+x} ]]; then bd_asar=$2; shift
-      else die_non_empty_option "$1"; fi
-      ;;
-    --bd-asar=?*) bd_asar=${1#*=} ;;
-    --bd-asar=) die_non_empty_option "${1%%=*}" ;;
     -r|--bd-repo)
       if [[ ${2:+x} ]]; then bd_repo=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --bd-repo-release)
-      if [[ ${2+x} ]]; then bd_repo_release=$2; shift
+    --bd-repo=?*) bd_repo=${1#*=} ;;
+    --bd-repo=) die_non_empty_option "${1%%=*}" ;;
+    -R|--bd-release)
+      if [[ ${2:+x} ]]; then bd_release=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --bd-repo-release=?*) bd_repo_release=${1#*=} ;;
-    --bd-repo-release=) die_non_empty_option "${1%%=*}" ;;
+    --bd-release=?*) bd_release=${1#*=} ;;
+    --bd-release=) die_non_empty_option "${1%%=*}" ;;
+    -a|--bd-asar)
+      if [[ ${2:+x} ]]; then bd_asar=$2; shift
+      else die_non_empty_option "$1"; fi
+      ;;
+    --bd-asar=?*) bd_asar=${1#*=} ;;
+    --bd-asar=) die_non_empty_option "${1%%=*}" ;;
     --flatpak) flatpak=yes ;;
     --flatpak=*) die_no_option "${1%%=*}" ;;
     --flatpak-bin)
@@ -182,10 +184,10 @@ done
 bdc_status() {
   asar_install=no
   index_mod=no
-  verbose 2 "VV: BetterDiscord asar installation: $bd_data_bd_asar"
-  if [[ -h $bd_data_bd_asar && ! -f $bd_data_bd_asar ]]; then
+  verbose 2 "VV: BetterDiscord asar installation: $bd_asar_dest"
+  if [[ -h $bd_asar_dest && ! -f $bd_asar_dest ]]; then
     asar_install='(broken link) no'
-  elif [[ -f $bd_data_bd_asar ]]; then
+  elif [[ -f $bd_asar_dest ]]; then
     asar_install='(symbolic link) yes'
   elif [[ -d $bd_config ]]; then
     asar_install='(missing) no'
@@ -321,7 +323,7 @@ bdc_snap() {
       <<< $'printf -- \'%s/.config\n\' "$SNAP_USER_DATA" 1>&3' 3>&1)
   discord_config=$xdg_config/discord
   bd_config=$xdg_config/BetterDiscord
-  bd_data_bd_asar=$bd_config/data/betterdiscord.asar
+  bd_asar_dest=$bd_config/data/betterdiscord.asar
   bdc_find_modules
 }
 
@@ -332,7 +334,7 @@ bdc_flatpak() {
       -c $'printf -- \'%s\n\' "$XDG_CONFIG_HOME"')
   discord_config=${xdg_config:-$HOME/.var/app/com.discordapp.Discord/config}/discord
   bd_config=$xdg_config/BetterDiscord
-  bd_data_bd_asar=$bd_config/data/betterdiscord.asar
+  bd_asar_dest=$bd_config/data/betterdiscord.asar
   bdc_find_modules
 }
 
@@ -359,24 +361,24 @@ bdc_clean_legacy() {
 }
 
 bd_install_asar() {
-  verbose 2 "VV: BetterDiscord asar installation: $bd_data_bd_asar"
+  verbose 2 "VV: BetterDiscord asar installation: $bd_asar_dest"
   if [[ -z $bd_asar ]]; then
-    declare release=$bd_repo/releases/$bd_repo_release
+    declare release=https://github.com/$bd_repo/releases/$bd_release
     verbose 1 "VV: BetterDiscord release URL: $release"
     verbose 1 "V: Downloading BetterDiscord asar..."
-    curl -LSso "$bd_data_bd_asar" --create-dirs \
+    curl -LSso "$bd_asar_dest" --create-dirs \
         "$release/download/betterdiscord.asar"
   else
     if [[ ${flatpak+x} ]] || [[ ${snap+x} ]]; then
       verbose 'V: Copying BetterDiscord asar...'
-      install -D "$bd_asar" "$bd_data_bd_asar"
+      install -D "$bd_asar" "$bd_asar_dest"
     fi
   fi
 }
 
 bd_patch() {
   verbose 1 'V: Injecting into index.js...'
-  declare escaped_asar=${bd_data_bd_asar/\\/\\\\}
+  declare escaped_asar=${bd_asar_dest/\\/\\\\}
   printf $'require("%s");
 module.exports = require(\'./core.asar\');
 ' "${escaped_asar//\"/\\\"}" > "$core/index.js"
