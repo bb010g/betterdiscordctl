@@ -39,6 +39,7 @@ Options:
   -V, --version                  Display version info and exit
   -h, --help                     Display this help message and exit
   -v, --verbose                  Increase verbosity
+  -s, --quiet                    Decrease verbosity
   -f, --flavors=FLAVORS          Colon-separated list of Discord flavors
                                  (default: ":canary:ptb")
   -m, --modules=DIRECTORY        Use the specified Discord modules directory
@@ -107,9 +108,13 @@ while :; do
       ;;
     -h=*|-\?=*|--help=*) die_no_option "${1%%=*}" ;;
     -v|--verbose)
-      ((++verbosity))
+      ((verbosity++))
       ;;
     -v=*|--verbose=*) die_no_option "${1%%=*}" ;;
+    -q|--quiet)
+      ((verbosity--))
+      ;;
+    -q=*|--quiet=*) die_no_option "${1%%=*}" ;;
     -f|--flavors)
       if [[ ${2+x} ]]; then IFS=':' read -ra d_flavors <<< "$2:"; shift
       else die_option "$1"; fi
