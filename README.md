@@ -13,12 +13,13 @@ A manager for BetterDiscord on Linux.
 
 ### Manual
 
-Requires `curl` which you can install from your distro's [package manager][curl-packages].
+Requires `curl`, which you can install from your distro's
+[package manager][curl-packages].
 
 [curl-packages]: https://curl.se/download.html#Linux
 
-You can then install as follows (`#` means that a command needs root, which you
-can get by prefixing it with `sudo`):
+You can then install as follows (`#` means that a command needs root, which
+you can get by prefixing it with `sudo`):
 
 ```
 $ curl -O https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl
@@ -60,27 +61,29 @@ You can then keep `betterdiscordctl` up to date with one command:
 
 * `-r` / `--bd-repo` (default `https://github.com/rauenzi/BetterDiscordApp`)
 
-  When installing BetterDiscord, use the specified Git repository.
+  When installing BetterDiscord, use the specified GitHub repository.
+  Defaults to upstream BetterDiscord.
 
 * `--bd-repo-release` (default `latest`)
 
   When downloading from `--bd-repo`, use this release.
 
-* `-b` / `--betterdiscord`
+* `--bd-asar`
 
-  Instead of downloading a copy of `betterdiscord.asar`, use the specified file.
-
-* `--snap`
-
-  Automatically detect the default Snap directory for Discord. A given
-  option argument will be used as the snap command to call.
+  Instead of downloading `betterdiscord.asar` from a release, copy the
+  specified BetterDiscord asar file.
 
 * `--flatpak`
 
   Automatically detect the default Flatpak directory for Discord. A given
-  option argument will be used as the flatpak command to call.
+  option argument will be used as the `flatpak` executable to call.
 
-* `--upgrade-url` (default `https://git.io/bdctl`)
+* `--snap`
+
+  Automatically detect the default Snap directory for Discord. A given
+  option argument will be used as the `snap` executable to call.
+
+* `--upgrade-url` (default `https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl`)
 
   Use the specified URL for upgrading betterdiscordctl.
 
@@ -112,6 +115,10 @@ Updates `betterdiscordctl` to the latest version available on GitHub.
 
   Works like `betterdiscordctl status`.
 
+* `betterdiscordctl status --flatpak`
+
+  Shows the BetterDiscord status for a Discord installed via Flatpak.
+
 * `betterdiscordctl install -f ptb`
 
   Installs BetterDiscord to the PTB flavor, instead of the default.
@@ -119,10 +126,6 @@ Updates `betterdiscordctl` to the latest version available on GitHub.
 * `betterdiscordctl reinstall -f canary`
 
   Reinstalls BetterDiscord to Discord Canary.
-
-* `betterdiscordctl status --flatpak`
-
-  Shows the BetterDiscord status for a Discord installed via Flatpak.
 
 * `betterdiscordctl uninstall --snap`
 
@@ -132,13 +135,14 @@ Updates `betterdiscordctl` to the latest version available on GitHub.
 
 * `$XDG_DATA_HOME/betterdiscordctl` (fallback `~/.local/share/betterdiscordctl`)
 
-  **No longer used and may be deleted in a later release.**
+  `betterdiscordctl`'s machine-specific data directory. Currently unused and
+  not created on new installs.
 
 * `$XDG_CONFIG_HOME/BetterDiscord` (fallback `~/.config/BetterDiscord`)
 
   `betterdiscord`'s normal data & configuration.
 
-  * With `--snap`, this will fall back to `$SNAP_USER_DATA/.config`.
-
   * With `--flatpak`, this will fall back to
     `~/.var/app/com.discordapp.Discord/config/BetterDiscord`.
+
+  * With `--snap`, this will fall back to `$SNAP_USER_DATA/.config`.
