@@ -11,8 +11,8 @@ DISABLE_UPGRADE=
 # Options
 cmd=status
 verbosity=0
-flavors=('' canary ptb)
-modules=
+d_flavors=('' canary ptb)
+d_modules=
 bd_repo='rauenzi/BetterDiscordApp'
 bd_release=latest
 bd_asar=
@@ -23,11 +23,11 @@ snap_bin=snap
 upgrade_url='https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl'
 
 # Variables
-flavor=
-core=
+d_flavor=
+d_core=
 xdg_config=${XDG_CONFIG_HOME:-$HOME/.config}
-data=${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl
-discord_config=
+bdc_data=${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl
+d_config=
 bd_config=$xdg_config/BetterDiscord
 bd_asar_dest=$bd_config/data/betterdiscord.asar
 
@@ -111,17 +111,17 @@ while :; do
       ;;
     -v=*|--verbose=*) die_no_option "${1%%=*}" ;;
     -f|--flavors)
-      if [[ ${2+x} ]]; then IFS=':' read -ra flavors <<< "$2:"; shift
+      if [[ ${2+x} ]]; then IFS=':' read -ra d_flavors <<< "$2:"; shift
       else die_option "$1"; fi
       ;;
     --flavors=*)
-      IFS=':' read -ra flavors <<< "${1#*=}:"
+      IFS=':' read -ra d_flavors <<< "${1#*=}:"
       ;;
     -m|--modules)
-      if [[ ${2:+x} ]]; then modules=$2; shift
+      if [[ ${2:+x} ]]; then d_modules=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --modules=?*) modules=${1#*=} ;;
+    --modules=?*) d_modules=${1#*=} ;;
     --modules=) die_non_empty_option "${1%%=*}" ;;
     -r|--bd-repo)
       if [[ ${2:+x} ]]; then bd_repo=$2; shift
@@ -177,7 +177,7 @@ while :; do
 done
 
 # currently unused
-# mkdir -p "$data"
+# mkdir -p "$bdc_data"
 
 # Commands
 
@@ -192,18 +192,18 @@ bdc_status() {
   elif [[ -d $bd_config ]]; then
     asar_install='(missing) no'
   fi
-  grep -Fq 'betterdiscord.asar' "$core/index.js" && index_mod=yes
+  grep -Fq 'betterdiscord.asar' "$d_core/index.js" && index_mod=yes
 
   printf 'Discord flavor: %s
 Discord modules: %s
 BetterDiscord directory: %s
 BetterDiscord asar installed: %s
 Index modified: %s
-' "$flavor" "$modules" "$bd_config" "$asar_install" "$index_mod"
+' "$d_flavor" "$d_modules" "$bd_config" "$asar_install" "$index_mod"
 }
 
 bdc_install() {
-  grep -Fq 'betterdiscord.asar' "$core/index.js" && die 'ERROR: Already installed.'
+  grep -Fq 'betterdiscord.asar' "$d_core/index.js" && die 'ERROR: Already installed.'
   bdc_clean_legacy
 
   bd_install_asar
@@ -213,7 +213,7 @@ bdc_install() {
 }
 
 bdc_reinstall() {
-  grep -Fq 'betterdiscord.asar' "$core/index.js" || die 'ERROR: Not installed.'
+  grep -Fq 'betterdiscord.asar' "$d_core/index.js" || die 'ERROR: Not installed.'
   bdc_clean_legacy
 
   bdc_kill
@@ -225,7 +225,7 @@ bdc_reinstall() {
 }
 
 bdc_uninstall() {
-  grep -Fq 'betterdiscord.asar' "$core/index.js" || die 'ERROR: Not installed.'
+  grep -Fq 'betterdiscord.asar' "$d_core/index.js" || die 'ERROR: Not installed.'
   bdc_clean_legacy
 
   bdc_kill
@@ -271,33 +271,33 @@ bdc_upgrade() {
 # Implementation functions
 
 bdc_main() {
-  if [[ -z $modules ]]; then
+  if [[ -z $d_modules ]]; then
     if [[ $flatpak ]]; then bdc_flatpak
     elif [[ $snap ]]; then bdc_snap
     else bdc_scan; fi
   else
-    [[ -d $modules ]] || die 'ERROR: Discord modules directory not found.'
-    flavor=${modules%/*/modules}
-    flavor=${flavor##*/discord}
+    [[ -d $d_modules ]] || die 'ERROR: Discord modules directory not found.'
+    d_flavor=${d_modules%/*/modules}
+    d_flavor=${d_flavor##*/discord}
   fi
-  [[ -d $modules ]] || die 'ERROR: Discord modules directory not found.' \
+  [[ -d $d_modules ]] || die 'ERROR: Discord modules directory not found.' \
       'Try specifying it with "--modules".'
-  core=$modules/discord_desktop_core
-  [[ -d $core ]] || die "ERROR: Directory 'discord_desktop_core' not found in $modules"
+  d_core=$d_modules/discord_desktop_core
+  [[ -d $d_core ]] || die "ERROR: Directory 'discord_desktop_core' not found in $d_modules"
 }
 
 bdc_scan() {
-  for flavor in "${flavors[@]}"; do
-    verbose 2 "VV: Trying flavor '$flavor'"
-    discord_config=$xdg_config/discord${flavor,,}
-    if [[ ! -d $discord_config ]]; then
+  for d_flavor in "${d_flavors[@]}"; do
+    verbose 2 "VV: Trying flavor '$d_flavor'"
+    d_config=$xdg_config/discord${d_flavor,,}
+    if [[ ! -d $d_config ]]; then
       printf 'WARN: Discord %s config directory not found (%s).\n' \
-          "$flavor" "$discord_config" >&2
+          "$d_flavor" "$d_config" >&2
       continue
     fi
-    if [[ -z $modules ]]; then
+    if [[ -z $d_modules ]]; then
       bdc_find_modules
-    elif [[ ! -d $modules ]]; then
+    elif [[ ! -d $d_modules ]]; then
       die 'ERROR: Discord modules directory not found.'
     fi
     break
@@ -305,12 +305,12 @@ bdc_scan() {
 }
 
 bdc_find_modules() {
-  [[ -d $discord_config ]] || die "ERROR: Discord $flavor config directory not found ($discord_config)."
-  declare -a all_modules
-  all_modules=("$discord_config/"+([0-9]).+([0-9]).+([0-9])/modules)
-  ((${#all_modules[@]})) || die 'ERROR: Discord modules directory not found.'
-  modules=${all_modules[-1]}
-  verbose 1 "V: Found modules in $modules"
+  [[ -d $d_config ]] || die "ERROR: Discord $d_flavor config directory not found ($d_config)."
+  declare -a all_d_modules
+  all_d_modules=("$d_config/"+([0-9]).+([0-9]).+([0-9])/modules)
+  ((${#all_d_modules[@]})) || die 'ERROR: Discord modules directory not found.'
+  d_modules=${all_d_modules[-1]}
+  verbose 1 "V: Found modules in $d_modules"
 }
 
 bdc_snap() {
@@ -318,7 +318,7 @@ bdc_snap() {
   # Expansion should happen inside snap's shell.
   xdg_config=$("$snap_bin" run --shell discord \
       <<< $'printf -- \'%s/.config\n\' "$SNAP_USER_DATA" 1>&3' 3>&1)
-  discord_config=$xdg_config/discord
+  d_config=$xdg_config/discord
   bd_config=$xdg_config/BetterDiscord
   bd_asar_dest=$bd_config/data/betterdiscord.asar
   bdc_find_modules
@@ -329,15 +329,15 @@ bdc_flatpak() {
   # Expansion should happen inside flatpak's shell.
   xdg_config=$("$flatpak_bin" run --command=sh com.discordapp.Discord \
       -c $'printf -- \'%s\n\' "$XDG_CONFIG_HOME"')
-  discord_config=${xdg_config:-$HOME/.var/app/com.discordapp.Discord/config}/discord
+  d_config=${xdg_config:-$HOME/.var/app/com.discordapp.Discord/config}/discord
   bd_config=$xdg_config/BetterDiscord
   bd_asar_dest=$bd_config/data/betterdiscord.asar
   bdc_find_modules
 }
 
 bdc_kill() {
-  printf 'Killing Discord %s processes...\n' "$flavor" >&2
-  pkill -exi -KILL "discord${flavor:0:8}" || printf 'No active processes found.\n' >&2
+  printf 'Killing Discord %s processes...\n' "$d_flavor" >&2
+  pkill -exi -KILL "discord${d_flavor:0:8}" || printf 'No active processes found.\n' >&2
 }
 
 bd_install_asar() {
@@ -357,18 +357,18 @@ bd_install_asar() {
 }
 
 bdc_clean_legacy() {
-  if [[ -d $core/core ]]; then
+  if [[ -d $d_core/core ]]; then
     printf 'Removing legacy core directory...\n' >&2
-    rm -rf "$core/core"
+    rm -rf "$d_core/core"
   fi
-  if [[ -d $core/injector ]]; then
+  if [[ -d $d_core/injector ]]; then
     printf 'Removing legacy injector directory...\n' >&2
-    rm -rf "$core/injector"
+    rm -rf "$d_core/injector"
   fi
-  if [[ -d $data ]]; then
-    if [[ -f "$data/bd_map" || -d "$data/bd" ]]; then
+  if [[ -d $bdc_data ]]; then
+    if [[ -f "$bdc_data/bd_map" || -d "$bdc_data/bd" ]]; then
       printf 'Removing legacy machine-specific data...\n' >&2
-      rm -rf "$data/bd_map" "$data/bd"
+      rm -rf "$bdc_data/bd_map" "$bdc_data/bd"
     fi
   fi
 }
@@ -378,13 +378,13 @@ bd_patch() {
   declare escaped_asar=${bd_asar_dest/\\/\\\\}
   printf $'require("%s");
 module.exports = require(\'./core.asar\');
-' "${escaped_asar//\"/\\\"}" > "$core/index.js"
+' "${escaped_asar//\"/\\\"}" > "$d_core/index.js"
 }
 
 bd_unpatch() {
   verbose 1 'V: Removing BetterDiscord injection...'
   printf $'module.exports = require(\'./core.asar\');
-' > "$core/index.js"
+' > "$d_core/index.js"
 }
 
 # Included from https://github.com/bb010g/Semver.sh , under the MIT License.
