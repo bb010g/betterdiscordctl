@@ -91,19 +91,28 @@ You can then keep `betterdiscordctl` up to date with one command:
 * `--snap`
 
   Automatically detect the default Snap directories for Discord. The `-c` flag
-  is set due to Snaps apps being [confined][snapcraft-docs]. A given option
-  argument will be used as the snap command to call.
+  is set due to Snaps apps being [confined][snapcraft-docs].
+
+* `--snap-bin` (default `snap`)
+
+  Calls this `snap` executable.
 
 * `--flatpak`
 
   Automatically detect the default Flatpak directories for Discord. The `-c`
-  flag is set due to Flatpak apps being [sandboxed][flatpak-docs]. A given
-  option argument will be used as the flatpak command to call.
+  flag is set due to Flatpak apps being [sandboxed][flatpak-docs].
+
+* `--flatpak-bin` (default `flatpak`)
+
+  Calls this `flatpak` executable.
 
 * `--nix`
 
-  Automatically detect the default Nix store directories for Discord. A given
-  option argument will be used as the nix-store command to call.
+  Automatically detect the default Nix store directories for Discord.
+
+* `--nix-store-bin` (default `nix-store`)
+
+  Calls this `nix-store` executable.
 
 * `--upgrade-url` (default `https://git.io/bdctl`)
 

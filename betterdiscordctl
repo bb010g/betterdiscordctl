@@ -20,8 +20,11 @@ bd_repo_branch=injector
 bd=
 copy_bd=
 snap=
+snap_bin=snap
 flatpak=
+flatpak_bin=flatpak
 nix=
+nix_store_bin='nix-store'
 upgrade_url='https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl'
 
 # Variables
@@ -29,9 +32,6 @@ flavor=
 core=
 xdg_config=${XDG_CONFIG_HOME:-$HOME/.config}
 data=${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl
-snap_bin=snap
-flatpak_bin=flatpak
-nix_store_bin='nix-store'
 
 show_help() {
   cat << EOF
@@ -45,18 +45,18 @@ Options:
                                  a Discord installation
   -f, --flavors=FLAVORS          Colon-separated list of Discord flavors
   -d, --discord=DIRECTORY        Use the specified Discord directory
-                                 (requires --modules)
+                                 (requires "--modules")
   -m, --modules=DIRECTORY        Use the specified Discord modules directory
   -r, --bd-repo=REPOSITORY       Use the specified Git repo for BetterDiscord
       --bd-repo-branch=BRANCH    Use the specified Git branch for BetterDiscord
   -b, --betterdiscord=DIRECTORY  Use the specified BetterDiscord directory
   -c, --copy-bd                  Copy BD directory instead of symlinking
-      --snap[=COMMAND]           Use the Snap version of Discord (optionally
-                                 using the specified snap command)
-      --flatpak[=COMMAND]        Use the Flatpak version of Discord (optionally
-                                 using the specified flatpak command)
-      --nix[=COMMAND]            Look for Discord in the nix store (optionally
-                                 using the specified nix-store command)
+      --snap                     Use the Snap version of Discord
+      --snap-bin=EXECUTABLE      Use the specified "snap" executable
+      --flatpak                  Use the Flatpak version of Discord
+      --flatpak-bin=EXECUTABLE   Use the specified "flatpak" executable
+      --nix                      Look for Discord in the Nix store
+      --nix-store-bin=EXECUTABLE Use the specified "nix-store" executable
       --upgrade-url=URL          Custom URL to upgrade betterdiscordctl with
 
 Commands:
@@ -169,28 +169,29 @@ while :; do
       snap=yes
       copy_bd=yes
       ;;
-    --snap=?*)
-      snap=yes
-      copy_bd=yes
-      snap_bin=${1#*=}
+    --snap=*) die_no_option "${1%%=*}" ;;
+    --snap-bin)
+      if [[ ${2:+x} ]]; then snap_bin=$2; shift
+      else die_non_empty_option "$1"; fi
       ;;
-    --snap=) die_non_empty_option "${1%%=*}" ;;
-    --flatpak)
-      flatpak=yes
-      copy_bd=yes
+    --snap-bin=?*) snap_bin=${1#*=} ;;
+    --snap-bin=) die_non_empty_option "${1%%=*}" ;;
+    --flatpak) flatpak=yes ;;
+    --flatpak=*) die_no_option "${1%%=*}" ;;
+    --flatpak-bin)
+      if [[ ${2:+x} ]]; then flatpak_bin=$2; shift
+      else die_non_empty_option "$1"; fi
       ;;
-    --flatpak=?*)
-      flatpak=yes
-      copy_bd=yes
-      flatpak_bin=${1#*=}
-      ;;
-    --flatpak=) die_non_empty_option "${1%%=*}" ;;
+    --flatpak-bin=?*) flatpak_bin=${1#*=} ;;
+    --flatpak-bin=) die_non_empty_option "${1%%=*}" ;;
     --nix) nix=yes ;;
-    --nix=?*)
-      nix=yes
-      nix_store_bin=${1#*=}
+    --nix=*) die_no_option "${1%%=*}" ;;
+    --nix-store-bin)
+      if [[ ${2:+x} ]]; then nix_store_bin=$2; shift
+      else die_non_empty_option "$1"; fi
       ;;
-    --nix=) die_non_empty_option "${1%%=*}" ;;
+    --nix-store-bin=?*) nix_store_bin=${1#*=} ;;
+    --nix-store-bin=) die_non_empty_option "${1%%=*}" ;;
     --upgrade-url)
       if [[ ${2:+x} ]]; then upgrade_url=$2; shift
       else die_non_empty_option "$1"; fi
