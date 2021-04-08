@@ -79,7 +79,11 @@ die_with_help() {
   die "$@" 'Use "--help" for more information.'
 }
 
-die_non_empty() {
+die_option() {
+  die_with_help "ERROR: \"$1\" requires an option argument."
+}
+
+die_non_empty_option() {
   die_with_help "ERROR: \"$1\" requires a non-empty option argument."
 }
 
@@ -101,53 +105,50 @@ while :; do
       ;;
     -f|--flavors)
       if [[ ${2+x} ]]; then IFS=':' read -ra flavors <<< "$2:"; shift
-      else die_non_empty '--flavors'; fi
+      else die_option '--flavors'; fi
       ;;
-    --flavors=?*)
+    --flavors=*)
       IFS=':' read -ra flavors <<< "${1#*=}:"
       ;;
-    --flavors=)
-      die_non_empty '--flavors'
-      ;;
     -m|--modules)
-      if [[ ${2+x} ]]; then modules=$2; shift
-      else die_non_empty '--modules'; fi
+      if [[ ${2:+x} ]]; then modules=$2; shift
+      else die_non_empty_option '--modules'; fi
       ;;
     --modules=?*)
       modules=${1#*=}
       ;;
     --modules=)
-      die_non_empty '--modules'
+      die_non_empty_option '--modules'
       ;;
     --bd-asar)
-      if [[ ${2+x} ]]; then bd_asar=$2; shift
-      else die_non_empty '--bd-asar'; fi
+      if [[ ${2:+x} ]]; then bd_asar=$2; shift
+      else die_non_empty_option '--bd-asar'; fi
       ;;
     --bd-asar=?*)
       bd_asar=${1#*=}
       ;;
     --bd-asar=)
-      die_non_empty '--bd-asar'
+      die_non_empty_option '--bd-asar'
       ;;
     -r|--bd-repo)
-      if [[ ${2+x} ]]; then bd_repo=$2; shift
-      else die_non_empty '--bd-repo'; fi
+      if [[ ${2:+x} ]]; then bd_repo=$2; shift
+      else die_non_empty_option '--bd-repo'; fi
       ;;
     --bd-repo=?*)
       bd_repo=${1#*=}
       ;;
     --bd-repo=)
-      die_non_empty '--bd-repo'
+      die_non_empty_option '--bd-repo'
       ;;
     --bd-repo-release)
-      if [[ ${2+x} ]]; then bd_repo_release=$2; shift
-      else die_non_empty '--bd-repo-release'; fi
+      if [[ ${2:+x} ]]; then bd_repo_release=$2; shift
+      else die_non_empty_option '--bd-repo-release'; fi
       ;;
     --bd-repo-release=?*)
       bd_repo_release=${1#*=}
       ;;
     --bd-repo-release=)
-      die_non_empty '--bd-repo-release'
+      die_non_empty_option '--bd-repo-release'
       ;;
     --flatpak)
       flatpak=yes
@@ -157,7 +158,7 @@ while :; do
       flatpak_bin=${1#*=}
       ;;
     --flatpak=)
-      die_non_empty '--flatpak'
+      die_non_empty_option '--flatpak'
       ;;
     --snap)
       snap=yes
@@ -167,17 +168,17 @@ while :; do
       snap_bin=${1#*=}
       ;;
     --snap=)
-      die_non_empty '--snap'
+      die_non_empty_option '--snap'
       ;;
     --upgrade-url)
-      if [[ ${2+x} ]]; then upgrade_url=$2; shift
-      else die_non_empty '--upgrade-url'; fi
+      if [[ ${2:+x} ]]; then upgrade_url=$2; shift
+      else die_non_empty_option '--upgrade-url'; fi
       ;;
     --upgrade-url=?*)
       upgrade_url=${1#*=}
       ;;
     --upgrade-url=)
-      die_non_empty '--upgrade-url'
+      die_non_empty_option '--upgrade-url'
       ;;
     --)
       shift
