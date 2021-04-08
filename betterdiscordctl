@@ -101,21 +101,15 @@ while :; do
       printf 'betterdiscordctl %s\n' "$VERSION" >&2
       exit
       ;;
-    -V=*|--version=*)
-      die_no_option "${1%%=*}"
-      ;;
+    -V=*|--version=*) die_no_option "${1%%=*}" ;;
     -h|-\?|--help)
       show_help; exit
       ;;
-    -h=*|-\?=*|--help=*)
-      die_no_option "${1%%=*}"
-      ;;
+    -h=*|-\?=*|--help=*) die_no_option "${1%%=*}" ;;
     -v|--verbose)
       ((++verbosity))
       ;;
-    -v=*|--verbose=*)
-      die_no_option "${1%%=*}"
-      ;;
+    -v=*|--verbose=*) die_no_option "${1%%=*}" ;;
     -f|--flavors)
       if [[ ${2+x} ]]; then IFS=':' read -ra flavors <<< "$2:"; shift
       else die_option "$1"; fi
@@ -127,72 +121,44 @@ while :; do
       if [[ ${2:+x} ]]; then modules=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --modules=?*)
-      modules=${1#*=}
-      ;;
-    --modules=)
-      die_non_empty_option "${1%%=*}"
-      ;;
+    --modules=?*) modules=${1#*=} ;;
+    --modules=) die_non_empty_option "${1%%=*}" ;;
     --bd-asar-file)
       if [[ ${2:+x} ]]; then bd_asar_file=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --bd-asar-file=?*)
-      bd_asar_file=${1#*=}
-      ;;
-    --bd-asar-file=)
-      die_non_empty_option "${1%%=*}"
-      ;;
+    --bd-asar-file=?*) bd_asar_file=${1#*=} ;;
+    --bd-asar-file=) die_non_empty_option "${1%%=*}" ;;
     -r|--bd-repo)
       if [[ ${2:+x} ]]; then bd_repo=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --bd-repo=?*)
-      bd_repo=${1#*=}
-      ;;
-    --bd-repo=)
-      die_non_empty_option "${1%%=*}"
-      ;;
+    --bd-repo=?*) bd_repo=${1#*=} ;;
+    --bd-repo=) die_non_empty_option "${1%%=*}" ;;
     --bd-repo-release)
       if [[ ${2:+x} ]]; then bd_repo_release=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --bd-repo-release=?*)
-      bd_repo_release=${1#*=}
-      ;;
-    --bd-repo-release=)
-      die_non_empty_option "${1%%=*}"
-      ;;
-    --flatpak)
-      flatpak=yes
-      ;;
+    --bd-repo-release=?*) bd_repo_release=${1#*=} ;;
+    --bd-repo-release=) die_non_empty_option "${1%%=*}" ;;
+    --flatpak) flatpak=yes ;;
     --flatpak=?*)
       flatpak=yes
       flatpak_bin=${1#*=}
       ;;
-    --flatpak=)
-      die_non_empty_option "${1%%=*}"
-      ;;
-    --snap)
-      snap=yes
-      ;;
+    --flatpak=) die_non_empty_option "${1%%=*}" ;;
+    --snap) snap=yes ;;
     --snap=?*)
       snap=yes
       snap_bin=${1#*=}
       ;;
-    --snap=)
-      die_non_empty_option "${1%%=*}"
-      ;;
+    --snap=) die_non_empty_option "${1%%=*}" ;;
     --upgrade-url)
       if [[ ${2:+x} ]]; then upgrade_url=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --upgrade-url=?*)
-      upgrade_url=${1#*=}
-      ;;
-    --upgrade-url=)
-      die_non_empty_option "${1%%=*}"
-      ;;
+    --upgrade-url=?*) upgrade_url=${1#*=} ;;
+    --upgrade-url=) die_non_empty_option "${1%%=*}" ;;
     --)
       shift
       break
