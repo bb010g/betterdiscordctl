@@ -31,7 +31,7 @@ xdg_config=${XDG_CONFIG_HOME:-$HOME/.config}
 data=${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl
 snap_bin=snap
 flatpak_bin=flatpak
-nix_bin='nix-store'
+nix_store_bin='nix-store'
 
 show_help() {
   cat << EOF
@@ -210,7 +210,7 @@ while :; do
       ;;
     --nix=?*)
       nix=yes
-      nix_bin=${1#*=}
+      nix_store_bin=${1#*=}
       ;;
     --nix=)
       die_non_empty '--nix'
@@ -486,7 +486,7 @@ bdc_nix() {
     elif [[ ${flavor,,} == canary ]]; then
       flavor=Canary
     fi
-    scandir=$("$nix_bin" -r "$(which "Discord$flavor")")
+    scandir=$("$nix_store_bin" -r "$(which "Discord$flavor")")
     verbose 2 "VV: Scanning $scandir"
     discord="$scandir/opt/Discord$flavor"
     if [[ -d $discord ]]; then
