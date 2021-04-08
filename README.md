@@ -75,13 +75,19 @@ You can then keep `betterdiscordctl` up to date with one command:
 
 * `--flatpak`
 
-  Automatically detect the default Flatpak directory for Discord. A given
-  option argument will be used as the `flatpak` executable to call.
+  Automatically detect the default Flatpak directory for Discord.
+
+* `--flatpak-bin` (default `flatpak`)
+
+  Calls this `flatpak` executable.
 
 * `--snap`
 
-  Automatically detect the default Snap directory for Discord. A given
-  option argument will be used as the `snap` executable to call.
+  Automatically detect the default Snap directory for Discord.
+
+* `--snap-bin` (default `snap`)
+
+  Calls this `snap` executable.
 
 * `--upgrade-url` (default `https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl`)
 

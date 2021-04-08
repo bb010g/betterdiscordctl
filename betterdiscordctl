@@ -17,7 +17,9 @@ bd_asar=
 bd_repo='https://github.com/rauenzi/BetterDiscordApp'
 bd_repo_release=latest
 flatpak=
+flatpak_bin=flatpak
 snap=
+snap_bin=snap
 upgrade_url='https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl'
 
 # Variables
@@ -27,8 +29,6 @@ xdg_config=${XDG_CONFIG_HOME:-$HOME/.config}
 data=${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl
 discord_config=
 bd_config=$xdg_config/BetterDiscord
-flatpak_bin=flatpak
-snap_bin=snap
 bd_data_bd_asar=$bd_config/data/betterdiscord.asar
 
 show_help() {
@@ -45,10 +45,10 @@ Options:
   -r, --bd-repo=REPOSITORY       Use the specified git repo for BetterDiscord
       --bd-repo-release=RELEASE  Use the specified release for BetterDiscord
       --bd-asar=FILE             Use the specified betterdiscord.asar file
-      --flatpak[=COMMAND]        Use the Flatpak version of Discord (optionally
-                                 using the specified flatpak command)
-      --snap[=COMMAND]           Use the Snap version of Discord (optionally
-                                 using the specified snap command)
+      --flatpak                  Use the Flatpak version of Discord
+      --flatpak-bin=EXECUTABLE   Use the specified Flatpak executable
+      --snap                     Use the Snap version of Discord
+      --snap-bin=EXECUTABLE      Use the specified Snap executable
       --upgrade-url=URL          Custom URL to upgrade betterdiscordctl with
 
 Commands:
@@ -142,17 +142,21 @@ while :; do
     --bd-repo-release=?*) bd_repo_release=${1#*=} ;;
     --bd-repo-release=) die_non_empty_option "${1%%=*}" ;;
     --flatpak) flatpak=yes ;;
-    --flatpak=?*)
-      flatpak=yes
-      flatpak_bin=${1#*=}
+    --flatpak=*) die_no_option "${1%%=*}" ;;
+    --flatpak-bin)
+      if [[ ${2:+x} ]]; then flatpak_bin=$2; shift
+      else die_non_empty_option "$1"; fi
       ;;
-    --flatpak=) die_non_empty_option "${1%%=*}" ;;
+    --flatpak-bin=?*) flatpak_bin=${1#*=} ;;
+    --flatpak-bin=) die_non_empty_option "${1%%=*}" ;;
     --snap) snap=yes ;;
-    --snap=?*)
-      snap=yes
-      snap_bin=${1#*=}
+    --snap=*) die_no_option "${1%%=*}" ;;
+    --snap-bin)
+      if [[ ${2:+x} ]]; then snap_bin=$2; shift
+      else die_non_empty_option "$1"; fi
       ;;
-    --snap=) die_non_empty_option "${1%%=*}" ;;
+    --snap-bin=?*) snap_bin=${1#*=} ;;
+    --snap-bin=) die_non_empty_option "${1%%=*}" ;;
     --upgrade-url)
       if [[ ${2:+x} ]]; then upgrade_url=$2; shift
       else die_non_empty_option "$1"; fi
@@ -349,7 +353,7 @@ bdc_clean_legacy() {
     rm -rf "$core/injector"
   fi
   if [[ -d $data ]]; then
-    if [[ -f "$data/bd_map" || -f "$data/bd" ]]; then
+    if [[ -f "$data/bd_map" || -d "$data/bd" ]]; then
       printf 'Removing legacy machine-specific data...\n' >&2
       rm -rf "$data/bd_map" "$data/bd"
     fi
