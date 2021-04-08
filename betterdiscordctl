@@ -247,12 +247,7 @@ Linked injector repository: %s\n' \
 
 bdc_install() {
   [[ -d $core/injector ]] && die 'ERROR: Already installed.'
-
-  # Clean up legacy cruft
-  if [[ -d $core/core ]]; then
-    printf 'Removing legacy core directory...\n' >&2
-    rm -rf "$core/core"
-  fi
+  bdc_clean_legacy
 
   bd_patch
   bd_injector
@@ -262,6 +257,7 @@ bdc_install() {
 
 bdc_reinstall() {
   [[ -d $core/injector ]] || die 'Not installed.'
+  bdc_clean_legacy
 
   bdc_kill
 
@@ -276,6 +272,7 @@ bdc_reinstall() {
 
 bdc_update() {
   [[ -d $core/injector ]] || die 'Not installed.'
+  bdc_clean_legacy
 
   if ! pushd "$core/injector" >/dev/null; then
     if [[ -h $core/injector ]]; then
@@ -296,6 +293,7 @@ bdc_update() {
 
 bdc_uninstall() {
   [[ -d $core/injector ]] || die 'Not installed.'
+  bdc_clean_legacy
 
   bdc_kill
   bd_unpatch
@@ -503,6 +501,13 @@ bd_injector() {
   else
     verbose 1 'V: Linking BetterDiscord injector...'
     ln -s "$bd" "$core/injector"
+  fi
+}
+
+bdc_clean_legacy() {
+  if [[ -d $core/core ]]; then
+    printf 'Removing legacy core directory...\n' >&2
+    rm -rf "$core/core"
   fi
 }
 
