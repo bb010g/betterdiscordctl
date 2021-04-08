@@ -110,21 +110,15 @@ while :; do
       printf 'betterdiscordctl %s\n' "$VERSION" >&2
       exit
       ;;
-    -V=*|--version=*)
-      die_no_option "${1%%=*}"
-      ;;
+    -V=*|--version=*) die_no_option "${1%%=*}" ;;
     -h|-\?|--help)
       show_help; exit
       ;;
-    -h=*|-\?=*|--help=*)
-      die_no_option "${1%%=*}"
-      ;;
+    -h=*|-\?=*|--help=*) die_no_option "${1%%=*}" ;;
     -v|--verbose)
       ((++verbosity))
       ;;
-    -v=*|--verbose=*)
-      die_no_option "${1%%=*}"
-      ;;
+    -v=*|--verbose=*) die_no_option "${1%%=*}" ;;
     -s|--scan)
       if [[ ${2+x} ]]; then IFS=':' read -ra scan <<< "$2:"; shift
       else die_option "$1"; fi
@@ -143,58 +137,34 @@ while :; do
       if [[ ${2:+x} ]]; then discord=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --discord=?*)
-      discord=${1#*=}
-      ;;
-    --discord=)
-      die_non_empty_option "${1%%=*}"
-      ;;
+    --discord=?*) discord=${1#*=} ;;
+    --discord=) die_non_empty_option "${1%%=*}" ;;
     -m|--modules)
       if [[ ${2:+x} ]]; then modules=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --modules=?*)
-      modules=${1#*=}
-      ;;
-    --modules=)
-      die_non_empty_option "${1%%=*}"
-      ;;
+    --modules=?*) modules=${1#*=} ;;
+    --modules=) die_non_empty_option "${1%%=*}" ;;
     --bd-repo-branch)
       if [[ ${2:+x} ]]; then bd_repo_branch=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --bd-repo-branch=?*)
-      bd_repo_branch=${1#*=}
-      ;;
-    --bd-repo-branch=)
-      die_non_empty_option "${1%%=*}"
-      ;;
+    --bd-repo-branch=?*) bd_repo_branch=${1#*=} ;;
+    --bd-repo-branch=) die_non_empty_option "${1%%=*}" ;;
     -r|--bd-repo)
       if [[ ${2:+x} ]]; then bd_repo=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --bd-repo=?*)
-      bd_repo=${1#*=}
-      ;;
-    --bd-repo=)
-      die_non_empty_option "${1%%=*}"
-      ;;
+    --bd-repo=?*) bd_repo=${1#*=} ;;
+    --bd-repo=) die_non_empty_option "${1%%=*}" ;;
     -b|--betterdiscord)
       if [[ ${2:+x} ]]; then bd=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --betterdiscord=?*)
-      bd=${1#*=}
-      ;;
-    --betterdiscord=)
-      die_non_empty_option "${1%%=*}"
-      ;;
-    -c|--copy-bd)
-      copy_bd=yes
-      ;;
-    -c=*|--copy-bd=*)
-      die_no_option "${1%%=*}"
-      ;;
+    --betterdiscord=?*) bd=${1#*=} ;;
+    --betterdiscord=) die_non_empty_option "${1%%=*}" ;;
+    -c|--copy-bd) copy_bd=yes ;;
+    -c=*|--copy-bd=*) die_no_option "${1%%=*}" ;;
     --snap)
       snap=yes
       copy_bd=yes
@@ -204,9 +174,7 @@ while :; do
       copy_bd=yes
       snap_bin=${1#*=}
       ;;
-    --snap=)
-      die_non_empty_option "${1%%=*}"
-      ;;
+    --snap=) die_non_empty_option "${1%%=*}" ;;
     --flatpak)
       flatpak=yes
       copy_bd=yes
@@ -216,29 +184,19 @@ while :; do
       copy_bd=yes
       flatpak_bin=${1#*=}
       ;;
-    --flatpak=)
-      die_non_empty_option "${1%%=*}"
-      ;;
-    --nix)
-      nix=yes
-      ;;
+    --flatpak=) die_non_empty_option "${1%%=*}" ;;
+    --nix) nix=yes ;;
     --nix=?*)
       nix=yes
       nix_store_bin=${1#*=}
       ;;
-    --nix=)
-      die_non_empty_option "${1%%=*}"
-      ;;
+    --nix=) die_non_empty_option "${1%%=*}" ;;
     --upgrade-url)
       if [[ ${2:+x} ]]; then upgrade_url=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --upgrade-url=?*)
-      upgrade_url=${1#*=}
-      ;;
-    --upgrade-url=)
-      die_non_empty_option "${1%%=*}"
-      ;;
+    --upgrade-url=?*) upgrade_url=${1#*=} ;;
+    --upgrade-url=) die_non_empty_option "${1%%=*}" ;;
     --)
       shift
       break
