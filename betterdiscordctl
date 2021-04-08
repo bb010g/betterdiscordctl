@@ -110,73 +110,73 @@ while :; do
       ;;
     -s|--scan)
       if [[ ${2+x} ]]; then IFS=':' read -ra scan <<< "$2"; shift
-      else die_non_empty '--scan'; fi
+      else die_non_empty "$1"; fi
       ;;
     --scan=?*)
       IFS=':' read -ra scan <<< "${1#*=}"
       ;;
     --scan=)
-      die_non_empty '--scan'
+      die_non_empty "${1%%=*}"
       ;;
     -f|--flavors)
       if [[ ${2+x} ]]; then IFS=':' read -ra flavors <<< "$2"; shift
-      else die_non_empty '--flavors'; fi
+      else die_non_empty "$1"; fi
       ;;
     --flavors=?*)
       IFS=':' read -ra flavors <<< "${1#*=}"
       ;;
     --flavors=)
-      die_non_empty '--flavors'
+      die_non_empty "${1%%=*}"
       ;;
     -d|--discord)
       if [[ ${2+x} ]]; then discord=$2; shift
-      else die_non_empty '--discord'; fi
+      else die_non_empty "$1"; fi
       ;;
     --discord=?*)
       discord=${1#*=}
       ;;
     --discord=)
-      die_non_empty '--discord'
+      die_non_empty "${1%%=*}"
       ;;
     -m|--modules)
       if [[ ${2+x} ]]; then modules=$2; shift
-      else die_non_empty '--modules'; fi
+      else die_non_empty "$1"; fi
       ;;
     --modules=?*)
       modules=${1#*=}
       ;;
     --modules=)
-      die_non_empty '--modules'
+      die_non_empty "${1%%=*}"
       ;;
     --bd-repo-branch)
       if [[ ${2+x} ]]; then bd_repo_branch=$2; shift
-      else die_non_empty '--bd-repo-branch'; fi
+      else die_non_empty "$1"; fi
       ;;
     --bd-repo-branch=?*)
       bd_repo_branch=${1#*=}
       ;;
     --bd-repo-branch=)
-      die_non_empty '--bd-repo-branch'
+      die_non_empty "${1%%=*}"
       ;;
     -r|--bd-repo)
       if [[ ${2+x} ]]; then bd_repo=$2; shift
-      else die_non_empty '--bd-repo'; fi
+      else die_non_empty "$1"; fi
       ;;
     --bd-repo=?*)
       bd_repo=${1#*=}
       ;;
     --bd-repo=)
-      die_non_empty '--bd-repo'
+      die_non_empty "${1%%=*}"
       ;;
     -b|--betterdiscord)
       if [[ ${2+x} ]]; then bd=$2; shift
-      else die_non_empty '--betterdiscord'; fi
+      else die_non_empty "$1"; fi
       ;;
     --betterdiscord=?*)
       bd=${1#*=}
       ;;
     --betterdiscord=)
-      die_non_empty '--betterdiscord'
+      die_non_empty "${1%%=*}"
       ;;
     -c|--copy-bd)
       copy_bd=yes
@@ -191,7 +191,7 @@ while :; do
       snap_bin=${1#*=}
       ;;
     --snap=)
-      die_non_empty '--snap'
+      die_non_empty "${1%%=*}"
       ;;
     --flatpak)
       flatpak=yes
@@ -203,7 +203,7 @@ while :; do
       flatpak_bin=${1#*=}
       ;;
     --flatpak=)
-      die_non_empty '--flatpak'
+      die_non_empty "${1%%=*}"
       ;;
     --nix)
       nix=yes
@@ -213,17 +213,17 @@ while :; do
       nix_store_bin=${1#*=}
       ;;
     --nix=)
-      die_non_empty '--nix'
+      die_non_empty "${1%%=*}"
       ;;
     --upgrade-url)
       if [[ ${2+x} ]]; then upgrade_url=$2; shift
-      else die_non_empty '--upgrade-url'; fi
+      else die_non_empty "$1"; fi
       ;;
     --upgrade-url=?*)
       upgrade_url=${1#*=}
       ;;
     --upgrade-url=)
-      die_non_empty '--upgrade-url'
+      die_non_empty "${1%%=*}"
       ;;
     --)
       shift
