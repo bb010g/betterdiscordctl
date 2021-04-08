@@ -47,6 +47,10 @@ You can then keep `betterdiscordctl` up to date with one command:
 
   Increases the verbosity level, for progressively more debugging information.
 
+* `-q` / `--quiet`
+
+  Decreases the verbosity level, for progressively less debugging information.
+
 * `-f` / `--flavors` (default `:canary:ptb`)
 
   When scanning, looks for installations with the given suffixes (case
