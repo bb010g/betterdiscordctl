@@ -80,10 +80,6 @@ die_with_help() {
   die "$@" 'Use "--help" for more information.'
 }
 
-die_no_option() {
-  die_with_help "ERROR: \"$1\" requires no option argument."
-}
-
 die_option() {
   die_with_help "ERROR: \"$1\" requires an option argument."
 }
@@ -102,81 +98,55 @@ while :; do
       printf 'betterdiscordctl %s\n' "$VERSION" >&2
       exit
       ;;
-    -V=*|--version=*) die_no_option "${1%%=*}" ;;
     -h|-\?|--help)
       show_help; exit
       ;;
-    -h=*|-\?=*|--help=*) die_no_option "${1%%=*}" ;;
     -v|--verbose)
       ((verbosity++))
       ;;
-    -v=*|--verbose=*) die_no_option "${1%%=*}" ;;
     -q|--quiet)
       ((verbosity--))
       ;;
-    -q=*|--quiet=*) die_no_option "${1%%=*}" ;;
     -f|--flavors)
       if [[ ${2+x} ]]; then IFS=':' read -ra d_flavors <<< "$2:"; shift
       else die_option "$1"; fi
-      ;;
-    --flavors=*)
-      IFS=':' read -ra d_flavors <<< "${1#*=}:"
       ;;
     -m|--modules)
       if [[ ${2:+x} ]]; then d_modules=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --modules=?*) d_modules=${1#*=} ;;
-    --modules=) die_non_empty_option "${1%%=*}" ;;
     -r|--bd-repo)
       if [[ ${2:+x} ]]; then bd_repo=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --bd-repo=?*) bd_repo=${1#*=} ;;
-    --bd-repo=) die_non_empty_option "${1%%=*}" ;;
     -R|--bd-release)
       if [[ ${2:+x} ]]; then bd_release=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --bd-release=?*) bd_release=${1#*=} ;;
-    --bd-release=) die_non_empty_option "${1%%=*}" ;;
     -a|--bd-asar)
       if [[ ${2:+x} ]]; then bd_asar=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --bd-asar=?*) bd_asar=${1#*=} ;;
-    --bd-asar=) die_non_empty_option "${1%%=*}" ;;
     --flatpak) flatpak=yes ;;
-    --flatpak=*) die_no_option "${1%%=*}" ;;
     --flatpak-bin)
       if [[ ${2:+x} ]]; then flatpak_bin=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --flatpak-bin=?*) flatpak_bin=${1#*=} ;;
-    --flatpak-bin=) die_non_empty_option "${1%%=*}" ;;
     --snap) snap=yes ;;
-    --snap=*) die_no_option "${1%%=*}" ;;
     --snap-bin)
       if [[ ${2:+x} ]]; then snap_bin=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --snap-bin=?*) snap_bin=${1#*=} ;;
-    --snap-bin=) die_non_empty_option "${1%%=*}" ;;
     --upgrade-url)
       if [[ ${2:+x} ]]; then upgrade_url=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --upgrade-url=?*) upgrade_url=${1#*=} ;;
-    --upgrade-url=) die_non_empty_option "${1%%=*}" ;;
-    --)
-      shift
-      break
-      ;;
-    -?*)
-      printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
-      ;;
-    *)
-      break
+    # footer
+    -*=*) die "ERROR: Keyed options must not be separated by equals: $1" ;;
+    --) shift; break ;;
+    -?|--*) die_with_help "ERROR: Unknown top-level option: $1" ;;
+    -??*) die "ERROR: Switches must not be ran together: $1" ;;
+    *) break
   esac
   shift
 done
