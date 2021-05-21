@@ -35,72 +35,87 @@ You can then keep `betterdiscordctl` up to date with one command:
 
 ## Options
 
-* `-V` / `--version`
+betterdiscordctl (mostly) follows the Fuchsia
+[command-line tools rubric's execution section][fuchsia-cli-execution] and
+[CLI tool help requirements][fuchsia-cli_help].
+
+[fuchsia-cli-execution]: https://fuchsia.dev/fuchsia-src/concepts/api/cli#execution
+[fuchsia-cli_help]: https://fuchsia.dev/fuchsia-src/concepts/api/cli_help
+
+TODO: Update this options section (based on `--help`?)
+
+* `-V`, `--version`
 
   Displays the current version.
 
-* `-h` / `--help`
+* `-h`, `--help`
 
   Displays usage information.
 
-* `-v` / `--verbose`
+* `-v`, `--verbose`
 
   Increases the verbosity level, for progressively more debugging information.
 
-* `-q` / `--quiet`
+* `-q`, `--quiet`
 
   Decreases the verbosity level, for progressively less debugging information.
 
-* `-f` / `--flavors` (default `:canary:ptb`)
+* `-f`, `--d-flavors` `<d_flavors>` (default `:canary:ptb`)
 
   When scanning, looks for installations with the given suffixes (case
   insensitive, both hyphenated and unhyphenated). Stable is `''`, as it has no
   suffix. Note that **no** spaces follow colons. Your Discord flavor probably
   doesn't have a space in it, so don't use any in here.
 
-* `-m` / `--modules`
+* `-m`, `--d-modules` `<d_modules>`
 
   Disregards scanning results and uses the specified modules directory (found
   inside Discord's user-specific storage directory).
 
-* `-r` / `--bd-repo` (default `rauenzi/BetterDiscordApp`)
+* `-D`, `--bd-remote-dir` `<bd_r_dir>`
+
+* `-U`, `--bd-remote-url` `<bd_r_url>`
+
+* `-H`, `--bd-remote-github` `<bd_r_github>` (default `~rauenzi/BetterDiscordApp#latest`)
 
   When installing BetterDiscord, use the specified GitHub repository.
   Defaults to upstream BetterDiscord.
 
-* `-R` / `--bd-release` (default `latest`)
+  When downloading from `--bd-remote-github`, use this release.
 
-  When downloading from `--bd-repo`, use this release.
-
-* `-a` / `--bd-asar`
+* `--bd-remote-asar` `<bd_r_asar>`
 
   Instead of downloading `betterdiscord.asar` from a release, use the
-  specified BetterDiscord asar file. This flag is mostly meant for
-  **developers** testing custom BetterDiscord builds.
+  specified BetterDiscord asar file name. This flag is mostly meant for quirky
+  tests of custom BetterDiscord builds.
 
-* `--flatpak`
+* `-i`, `--d-install` …
+
+  + `traditional` (default)
+
+  + `flatpak`
 
   Automatically detect the default Flatpak directory for Discord.
 
-* `--flatpak-bin` (default `flatpak`)
-
-  Calls this `flatpak` executable.
-
-* `--snap`
+  + `snap`
 
   Automatically detect the default Snap directory for Discord.
 
-* `--snap-bin` (default `snap`)
+* `--flatpak-bin` `<flatpak>` (default `flatpak`)
+
+  Calls this `flatpak` executable.
+
+* `--snap-bin` `<snap>` (default `snap`)
 
   Calls this `snap` executable.
 
-* `--upgrade-url` (default `https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl`)
+* `--upgrade-url` `<upgrade_url>` (default `https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl`)
 
   Use the specified URL for upgrading betterdiscordctl.
 
 ## Commands
 
-### `status` (default)
+### `status`
 
 Displays information about your current BetterDiscord setup.
 
@@ -122,23 +137,23 @@ Updates `betterdiscordctl` to the latest version available on GitHub.
 
 ## Examples
 
-* `betterdiscordctl`
+* `betterdiscordctl --help`
 
-  Works like `betterdiscordctl status`.
+  Lists options & commands.
 
-* `betterdiscordctl status -f ptb`
+* `betterdiscordctl -f ptb status`
 
   Shows the BetterDiscord for the PTB flavor.
 
-* `betterdiscordctl install -f canary`
+* `betterdiscordctl -f canary install`
 
   Installs BetterDiscord to the Canary flavor.
 
-* `betterdiscordctl reinstall --flatpak`
+* `betterdiscordctl -i flatpak reinstall`
 
   Reinstalls BetterDiscord to a Discord installed via Flatpak.
 
-* `betterdiscordctl uninstall --snap`
+* `betterdiscordctl -i snap uninstall`
 
   Uninstalls BetterDiscord from a Discord installed via Snap.
 
