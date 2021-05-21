@@ -578,81 +578,65 @@ bd_uninstall() {
 # Included from https://github.com/bb010g/Semver.sh , under the MIT License.
 
 Semver::validate() {
-  # shellcheck disable=SC2064
-  trap "$(shopt -p extglob)" RETURN
-  shopt -s extglob
+  [[ $1 =~ ^([^+-.]*)\.?([^+-.]*)\.?([^+-]*)(-?)([^+]*)(\+?)(.*)$ ]]
+  declare -a ver; ver=("${BASH_REMATCH[@]:1}")
 
-  declare normal=${1%%[+-]*}
-  declare extra=${1:${#normal}}
+  if [[ ${ver[0]} != +([0-9]) ]]; then printf '%s\n' "Semver::validate: invalid major: ${ver[0]}" >&2; return 1; fi
+  if [[ ${ver[1]} != +([0-9]) ]]; then printf '%s\n' "Semver::validate: invalid minor: ${ver[1]}" >&2; return 1; fi
+  if [[ ${ver[2]} != +([0-9]) ]]; then printf '%s\n' "Semver::validate: invalid patch: ${ver[2]}" >&2; return 1; fi
 
-  declare major=${normal%%.*}
-  if [[ $major != +([0-9]) ]]; then echo "Semver::validate: invalid major: $major" >&2; return 1; fi
-  normal=${normal:${#major}+1}
-  declare minor=${normal%%.*}
-  if [[ $minor != +([0-9]) ]]; then echo "Semver::validate: invalid minor: $minor" >&2; return 1; fi
-  declare patch=${normal:${#minor}+1}
-  if [[ $patch != +([0-9]) ]]; then echo "Semver::validate: invalid patch: $patch" >&2; return 1; fi
-
-  declare -r ident="+([0-9A-Za-z-])"
-  declare pre=${extra%%+*}
-  declare pre_len=${#pre}
-  if [[ $pre_len -gt 0 ]]; then
-    pre=${pre#-}
-    if [[ $pre != $ident*(.$ident) ]]; then echo "Semver::validate: invalid pre-release: $pre" >&2; return 1; fi
+  if [[ ${ver[3]} == '-' && ${ver[4]} != +([0-9A-Za-z-])*(.+([0-9A-Za-z-])) ]]; then
+    printf '%s\n' "Semver::validate: invalid pre-release: ${ver[4]}" >&2; return 1
   fi
-  declare build=${extra:pre_len}
-  if [[ ${#build} -gt 0 ]]; then
-    build=${build#+}
-    if [[ $build != $ident*(.$ident) ]]; then echo "Semver::validate: invalid build metadata: $build" >&2; return 1; fi
+  if [[ ${ver[5]} == '+' && ${ver[6]} != +([0-9A-Za-z-])*(.+([0-9A-Za-z-])) ]]; then
+    printf '%s\n' "Semver::validate: invalid build metadata: ${ver[6]}" >&2; return 1
   fi
 
-  if [[ $2 ]]; then
-    echo "$2=(${major@Q} ${minor@Q} ${patch@Q} ${pre@Q} ${build@Q})"
+  if [[ -n $2 ]]; then
+    printf '%s\n' "$2=(${ver[0]@Q} ${ver[1]@Q} ${ver[2]@Q} ${ver[4]@Q} ${ver[6]@Q})"
   else
-    echo "$1"
+    printf '%s\n' "$1"
   fi
 }
 
 Semver::compare() {
-  declare -a x y
-  eval "$(Semver::validate "$1" x)"
-  eval "$(Semver::validate "$2" y)"
+  declare -a xs ys
+  eval "$(Semver::validate "$1" xs)"
+  eval "$(Semver::validate "$2" ys)"
 
-  declare x_i y_i i
+  declare i x y
   for i in 0 1 2; do
-    x_i=${x[i]}; y_i=${y[i]}
-    if [[ $x_i -eq $y_i ]]; then continue; fi
-    if [[ $x_i -gt $y_i ]]; then echo 1; return; fi
-    if [[ $x_i -lt $y_i ]]; then echo -1; return; fi
+    x=${xs[i]}; y=${ys[i]}
+    if [[ $x -eq $y ]]; then continue; fi
+    if [[ $x -gt $y ]]; then echo 1; return; fi
+    if [[ $x -lt $y ]]; then echo -1; return; fi
   done
 
-  x_i=${x[3]}; y_i=${y[3]}
-  if [[ -z $x_i && $y_i ]]; then echo 1; return; fi
-  if [[ $x_i && -z $y_i ]]; then echo -1; return; fi
+  x=${xs[3]}; y=${ys[3]}
+  if [[ -z $x && -n $y ]]; then echo 1; return; fi
+  if [[ -n $x && -z $y ]]; then echo -1; return; fi
 
   declare -a x_pre; declare x_len
   declare -a y_pre; declare y_len
-  IFS=. read -ra x_pre <<< "$x_i"; x_len=${#x_pre[@]}
-  IFS=. read -ra y_pre <<< "$y_i"; y_len=${#y_pre[@]}
+  IFS=. read -ra x_pre <<< "$x."; x_len=${#x_pre[@]}
+  IFS=. read -ra y_pre <<< "$y."; y_len=${#y_pre[@]}
 
   if (( x_len > y_len )); then echo 1; return; fi
   if (( x_len < y_len )); then echo -1; return; fi
 
   for (( i=0; i < x_len; i++ )); do
-    x_i=${x_pre[i]}; y_i=${y_pre[i]}
-    if [[ $x_i = "$y_i" ]]; then continue; fi
+    x=${x_pre[i]}; y=${y_pre[i]}
+    if [[ $x == "$y" ]]; then continue; fi
 
-    declare num_x num_y
-    num_x=$([[ $x_i = +([0-9]) ]] && echo "$x_i")
-    num_y=$([[ $y_i = +([0-9]) ]] && echo "$y_i")
-    if [[ $num_x && $num_y ]]; then
-      if [[ $x_i -gt $y_i ]]; then echo 1; return; fi
-      if [[ $x_i -lt $y_i ]]; then echo -1; return; fi
+    if [[ $x == +([0-9]) ]]; then
+      if [[ $y == +([0-9]) ]]; then
+        if [[ $x -gt $y ]]; then echo 1; return; fi
+        if [[ $x -lt $y ]]; then echo -1; return; fi
+      else echo -1; return; fi
+    elif [[ $y == +([0-9]) ]]; then echo 1; return
     else
-      if [[ $num_y ]]; then echo 1; return; fi
-      if [[ $num_x ]]; then echo -1; return; fi
-      if [[ $x_i > $y_i ]]; then echo 1; return; fi
-      if [[ $x_i < $y_i ]]; then echo -1; return; fi
+      if [[ $x > $y ]]; then echo 1; return; fi
+      if [[ $x < $y ]]; then echo -1; return; fi
     fi
   done
 
