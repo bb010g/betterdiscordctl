@@ -6,78 +6,115 @@ shopt -s dotglob extglob nullglob
 # Constants
 VERSION=2.0.0
 SOURCE=$(readlink -f "${BASH_SOURCE[0]}")
-DISABLE_UPGRADE=
+DISABLE_SELF_UPGRADE=
 
 # Options
-cmd=status
+cmd=
 verbosity=0
 d_flavors=('' canary ptb)
 d_modules=
-bd_repo='rauenzi/BetterDiscordApp'
-bd_release=latest
-bd_asar=
-flatpak=
+bd_remote=github
+bd_remote_dir=
+bd_remote_url=
+bd_remote_github_owner=rauenzi
+bd_remote_github_repo=BetterDiscordApp
+bd_remote_github_release=latest
+bd_remote_asar=betterdiscord.asar
+d_install=traditional
 flatpak_bin=flatpak
-snap=
 snap_bin=snap
-upgrade_url='https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl'
+self_upgrade_url='https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl'
 
 # Variables
 d_flavor=
 d_core=
-xdg_config=${XDG_CONFIG_HOME:-$HOME/.config}
+xdg_config=
 bdc_data=${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl
 d_config=
-bd_config=$xdg_config/BetterDiscord
-bd_asar_dest=$bd_config/data/betterdiscord.asar
+bd_config=
+bd_asar=
+bd_asar_escaped=
+bd_asar_name=
 
 show_help() {
   cat << EOF
-Usage: ${0##*/} [COMMAND] [OPTION...]
+Usage: ${0##*/} [-f d_flavors] \\
+  [-D <bd_r_dir>|-U <bd_r_url>|-H <bd_r_github>] \\
+  [-i (traditional|flatpak|snap)] <command>
+
+Manage BetterDiscord installations on Linux.
 
 Options:
-  -V, --version                  Display version info and exit
-  -h, --help                     Display this help message and exit
-  -v, --verbose                  Increase verbosity
-  -q, --quiet                    Decrease verbosity
-  -f, --flavors=FLAVORS          Colon-separated list of Discord flavors
-                                 (default: ":canary:ptb")
-  -m, --modules=DIRECTORY        Use the specified Discord modules directory
-  -r, --bd-repo=REPOSITORY       Use the specified git repo for BetterDiscord
-  -R, --bd-release=RELEASE       Use the specified release for BetterDiscord
-  -a, --bd-asar=FILE             Use the specified betterdiscord.asar file
-      --flatpak                  Use the Flatpak version of Discord
-      --flatpak-bin=EXECUTABLE   Use the specified "flatpak" executable
-      --snap                     Use the Snap version of Discord
-      --snap-bin=EXECUTABLE      Use the specified "snap" executable
-      --upgrade-url=URL          Custom URL to upgrade betterdiscordctl with
+  -V, --version                 display version info and exit
+  -h, --help                    display this help message and exit
+  -v, --verbose                 increase verbosity
+  -q, --quiet                   decrease verbosity
+  -f, --d-flavors <d_flavors>   discover Discord installations with the
+                                colon-separated list of suffixes <d_flavors>.
+                                Defaults to ':canary:ptb'. Flavors must be
+                                lowercase. Stable is flavor '', as it's
+                                unsuffixed. Flavors shouldn't include spaces.
+  -m, --d-modules <d_modules>   use Discord modules in directory <d_modules>.
+                                Defaults to discovery. Discord's user-specific
+                                storage directory should contain <d_modules>.
+  -D, --bd-remote-dir           reference BetterDiscord files at directory
+    <bd_r_dir>                  <bd_r_dir>. Overrides earlier --bd-remote-url
+                                or --bd-remote-github. An empty string keeps a
+                                previous value.
+  -U, --bd-remote-url           download BetterDiscord files at base URL
+    <bd_r_url>                  <bd_r_url>. Overrides earlier --bd-remote-dir
+                                or --bd-remote-github. An empty string keeps a
+                                previous value. Works like --bd-remote-dir
+                                with files downloaded into BetterDiscord's
+                                data directory.
+  -H, --bd-remote-github        download BetterDiscord files at GitHub
+    <bd_r_github>               repository release <bd_r_github>, of form
+                                [~<owner>][/<repo>][#<release>]. Defaults to
+                                '~rauenzi/BetterDiscordApp#latest'. Overrides
+                                earlier --bd-remote-dir or --bd-remote-github.
+                                An omitted part keeps a previous value.
+                                <owner> and <repo> must not contain '~', '/',
+                                or '#'. Works like --bd-remote-url with a
+                                GitHub repository release download base URL.
+  --bd-remote-asar <bd_r_asar>  finds "betterdiscord.asar" at path <bd_r_asar>
+                                relative to remote. Defaults to
+                                'betterdiscord.asar'.
+  -i, --d-install traditional   use a traditional Discord install. Default.
+  -i, --d-install flatpak       use a Discord Flatpak app
+  -i, --d-install snap          use a Discord Snap app
+  --flatpak-bin <flatpak>       invoke Flatpak executable <flatpak>. Defaults
+                                to 'flatpak'.
+  --snap-bin <snap>             invoke Snap executable <snap>. Defaults to
+                                'snap'.
+  --self-upgrade-url            query <self_upgrade_url> for self-upgrades
+    <self_upgrade_url>
 
 Commands:
-  status (default)               Show the current Discord patch state.
-  install                        Install BetterDiscord.
-  reinstall                      Reinstall BetterDiscord.
-  uninstall                      Uninstall BetterDiscord.
-  upgrade                        Update betterdiscordctl.
+  status                        show the current Discord patch state
+  install                       install BetterDiscord
+  reinstall                     reinstall BetterDiscord
+  uninstall                     uninstall BetterDiscord
+  self-upgrade                  upgrade this program
 EOF
 }
 
 verbose() {
   if (( verbosity >= $1 )); then
     shift
-    printf '%s\n' "$1" >&2
+    >&2 printf '%s\n' "$1"
   fi
 }
 
 die() {
   while (( $# > 0 )); do
-    printf '%s\n' "$1" >&2
+    >&2 printf '%s\n' "$1"
     shift
   done
   exit 1
 }
 
 die_with_help() {
-  die "$@" 'Use "--help" for more information.'
+  die "$@" "Use \`${0##*/} --help\` for more information."
 }
 
 die_option() {
@@ -88,57 +125,91 @@ die_non_empty_option() {
   die_with_help "ERROR: \"$1\" requires a non-empty option argument."
 }
 
+die_non_empty_option_part() {
+  die_with_help "ERROR: \"$1\" requires a non-empty $2 option argument part."
+}
+
+# arg parsing: top-level: options
 while :; do
   if [[ -z ${1+x} ]]; then break; fi
   case $1 in
-    status|install|reinstall|uninstall|upgrade)
-      cmd=$1
-      ;;
     -V|--version)
-      printf 'betterdiscordctl %s\n' "$VERSION" >&2
+      >&2 printf 'betterdiscordctl %s\n' "$VERSION"
       exit
       ;;
     -h|-\?|--help)
       show_help; exit
       ;;
     -v|--verbose)
-      ((verbosity++))
+      ((verbosity++)) || :
       ;;
     -q|--quiet)
-      ((verbosity--))
+      ((verbosity--)) || :
       ;;
-    -f|--flavors)
-      if [[ ${2+x} ]]; then IFS=':' read -ra d_flavors <<< "$2:"; shift
+    -f|--d-flavors)
+      if [[ ${2+x} ]]; then
+        if [[ $2 != "${2,,}" ]]; then
+          die_with_help "ERROR: Discord flavors list must be lowercase: $2"
+        else
+          IFS=':' read -ra d_flavors <<< "$2:"; shift
+        fi
       else die_option "$1"; fi
       ;;
-    -m|--modules)
+    -m|--d-modules)
       if [[ ${2:+x} ]]; then d_modules=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    -r|--bd-repo)
-      if [[ ${2:+x} ]]; then bd_repo=$2; shift
+    -D|--bd-remote-dir)
+      bd_remote=dir
+      if [[ ${2+x} ]]; then [[ ${2:+x} ]] && bd_remote_dir=$2; shift
+      else die_option "$1"; fi
+      ;;
+    -U|--bd-remote-url)
+      bd_remote=url
+      if [[ ${2+x} ]]; then [[ ${2:+x} ]] && bd_remote_url=$2; shift
+      else die_option "$1"; fi
+      ;;
+    -H|--bd-remote-github)
+      bd_remote=github
+      if [[ ${2+x} ]]; then
+        if [[ ! $2 =~ (~?[^~/#]*)(/?[^~/#]*)(#?.*) ]]; then
+          die_with_help "ERROR: \"$1\" requires a valid option argument."
+        fi
+        if [[ ${BASH_REMATCH[1]} ]]; then
+          [[ ${BASH_REMATCH[2]} != '~' ]] || die_non_empty_option_part "$1" '<owner>'
+          bd_remote_github_owner=${BASH_REMATCH[1]:1}
+        fi
+        if [[ ${BASH_REMATCH[2]} ]]; then
+          [[ ${BASH_REMATCH[2]} != '/' ]] || die_non_empty_option_part "$1" '<repo>'
+          bd_remote_github_repo=${BASH_REMATCH[2]:1}
+        fi
+        if [[ ${BASH_REMATCH[3]} ]]; then
+          [[ ${BASH_REMATCH[3]} != '#' ]] || die_non_empty_option_part "$1" '<release>'
+          bd_remote_github_release=${BASH_REMATCH[3]:1}
+        fi
+        shift
+      else die_option "$1"; fi
+      ;;
+    --bd-remote-asar)
+      if [[ ${2:+x} ]]; then bd_remote_asar=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    -R|--bd-release)
-      if [[ ${2:+x} ]]; then bd_release=$2; shift
-      else die_non_empty_option "$1"; fi
+    --d-install)
+      if [[ ${2:+x} ]]; then case "$2" in
+        traditional|flatpak|snap) d_install=$2 ;;
+        *) die_with_help "ERROR: Unknown top-level $1 value: $2" ;;
+      esac; shift; else die_non_empty_option "$1"; fi
       ;;
-    -a|--bd-asar)
-      if [[ ${2:+x} ]]; then bd_asar=$2; shift
-      else die_non_empty_option "$1"; fi
-      ;;
-    --flatpak) flatpak=yes ;;
     --flatpak-bin)
       if [[ ${2:+x} ]]; then flatpak_bin=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --snap) snap=yes ;;
     --snap-bin)
       if [[ ${2:+x} ]]; then snap_bin=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --upgrade-url)
-      if [[ ${2:+x} ]]; then upgrade_url=$2; shift
+    --self-upgrade-url)
+      if [[ ${2:+x} ]]; then self_upgrade_url=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
     # footer
@@ -150,6 +221,58 @@ while :; do
   esac
   shift
 done
+# arg parsing: top-level: arguments
+while :; do
+  if [[ -z ${1+x} ]]; then break; fi
+  case "$1" in
+    status|install|reinstall|uninstall|self-upgrade)
+      cmd=$1
+      shift
+      break
+      ;;
+    *) die_with_help "ERROR: Unknown top-level argument: $1"
+  esac
+  shift
+done
+# arg parsing: top-level: validation
+case "$bd_remote" in
+  github)
+    [[ $bd_remote_github_owner ]] || die_non_empty_option_part '--bd-remote-github' '<owner>'
+    [[ $bd_remote_github_repo ]] || die_non_empty_option_part '--bd-remote-github' '<repo>'
+    [[ $bd_remote_github_release ]] || die_non_empty_option_part '--bd-remote-github' '<release>'
+    ;;
+  url)
+    [[ $bd_remote_url ]] || die_non_empty_option '--bd-remote-url'
+    ;;
+  dir)
+    [[ $bd_remote_dir ]] || die_non_empty_option '--bd-remote-dir'
+    ;;
+esac
+# arg parsing: top-level: command dispatch
+case "$cmd" in
+  status|install|reinstall|uninstall|self-upgrade)
+    # arg parsing: (status|install|reinstall|uninstall|self-upgrade): options
+    while :; do
+      if [[ -z ${1+x} ]]; then break; fi
+        case "$1" in
+          # footer
+          -*=*) die "ERROR: Keyed options must not be separated by equals: $1" ;;
+          --) shift; break ;;
+          -?|--*) die_with_help "ERROR: Unknown |$cmd| option: $1" ;;
+          -??*) die "ERROR: Switches must not be ran together: $1" ;;
+        esac
+      shift
+    done
+    # arg parsing: (status|install|reinstall|uninstall|self-upgrade): arguments
+    if [[ -n ${1+x} ]]; then
+      die_with_help "ERROR: Unknown |$cmd| argument: $1"
+    fi
+    ;;
+  '')
+    die_with_help "ERROR: Specify a non-empty command."
+    ;;
+  *) die "ERROR: [arg parsing: top-level: command dispatch] Unknown command: $cmd" ;;
+esac
 
 # currently unused
 # mkdir -p "$bdc_data"
@@ -157,88 +280,115 @@ done
 # Commands
 
 bdc_status() {
+  declare asar_install bd_remote_status index_mod
   asar_install=no
   index_mod=no
-  verbose 2 "VV: BetterDiscord asar installation: $bd_asar_dest"
-  if [[ -h $bd_asar_dest && ! -f $bd_asar_dest ]]; then
+  verbose 2 "VV: BetterDiscord asar installation: $bd_asar"
+  if [[ -h $bd_asar && ! -f $bd_asar ]]; then
     asar_install='(broken link) no'
-  elif [[ -f $bd_asar_dest ]]; then
+  elif [[ -f $bd_asar ]]; then
     asar_install='(symbolic link) yes'
   elif [[ -d $bd_config ]]; then
     asar_install='(missing) no'
   fi
-  grep -Fq 'betterdiscord.asar' "$d_core/index.js" && index_mod=yes
+  if grep -Fq "$bd_asar_escaped" "$d_core/index.js"; then
+    index_mod=yes
+  elif grep -Fq "$bd_asar_name" "$d_core/index.js"; then
+    index_mod=noncompliant
+  elif grep -Fq 'betterdiscord.asar' "$d_core/index.js"; then
+    index_mod=noncompliant
+  fi
 
-  printf 'Discord flavor: %s
+  bd_remote_status="$bd_remote"
+  case "$bd_remote" in
+    github)
+      bd_remote_status+="
+BetterDiscord remote GitHub: ~$bd_remote_github_owner/$bd_remote_github_repo#$bd_remote_github_release"
+      ;;
+    url)
+      bd_remote_status+="
+BetterDiscord remote URL: $bd_remote_url"
+      ;;
+    dir)
+      bd_remote_status+="
+BetterDiscord remote directory: $bd_remote_dir"
+      ;;
+  esac
+
+  printf 'Discord install: %s
+Discord flavor: %s
 Discord modules: %s
 BetterDiscord directory: %s
 BetterDiscord asar installed: %s
-Index modified: %s
-' "$d_flavor" "$d_modules" "$bd_config" "$asar_install" "$index_mod"
+Discord "index.js" injected: %s
+BetterDiscord remote: %s
+' "$d_install" "$d_flavor" "$d_modules" "$bd_config" "$asar_install" \
+    "$index_mod" "$bd_remote_status"
 }
 
 bdc_install() {
-  grep -Fq 'betterdiscord.asar' "$d_core/index.js" && die 'ERROR: Already installed.'
+  grep -Fq "$bd_asar_escaped" "$d_core/index.js" && die 'ERROR: Already installed.'
   bdc_clean_legacy
 
-  bd_install_asar
-  bd_patch
+  bd_remote_install
+  bd_install
 
-  printf 'Installed. (Restart Discord if necessary.)\n' >&2
+  >&2 printf 'Installed. (Restart Discord if necessary.)\n'
 }
 
 bdc_reinstall() {
-  grep -Fq 'betterdiscord.asar' "$d_core/index.js" || die 'ERROR: Not installed.'
+  grep -Fq "$bd_asar_name" "$d_core/index.js" || die 'ERROR: Not installed.'
   bdc_clean_legacy
 
   bdc_kill
 
-  bd_install_asar
-  bd_patch
+  bd_remote_install
+  bd_install
 
-  printf 'Reinstalled.\n' >&2
+  >&2 printf 'Reinstalled.\n'
 }
 
 bdc_uninstall() {
-  grep -Fq 'betterdiscord.asar' "$d_core/index.js" || die 'ERROR: Not installed.'
+  grep -Fq "$bd_asar_name" "$d_core/index.js" || die 'ERROR: Not installed.'
   bdc_clean_legacy
 
   bdc_kill
-  bd_unpatch
+  bd_uninstall
 
-  printf 'Uninstalled.\n' >&2
+  >&2 printf 'Uninstalled.\n'
 }
 
-bdc_upgrade() {
-  if [[ $DISABLE_UPGRADE ]]; then
-    die 'ERROR: Upgrading has been disabled.' \
+bdc_self_upgrade() {
+  if [[ $DISABLE_SELF_UPGRADE ]]; then
+    die 'ERROR: Self-upgrading has been disabled.' \
         'If you installed this from a package, its maintainer should keep it up to date.'
   fi
 
-  github_version=$(curl -NLSs "$upgrade_url" | sed -n 's/^VERSION=//p')
+  declare self_upgrade_version semver_diff
+  self_upgrade_version=$(curl -NLSs "$self_upgrade_url" | sed -n 's/^VERSION=//p')
   if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
-    die "ERROR: GitHub couldn't be reached to check the version."
+    die "ERROR: The remote script URL couldn't be reached to check the version."
   fi
-  verbose 2 "VV: Script location: $SOURCE"
-  verbose 2 "VV: Upgrade URL: $upgrade_url"
+  verbose 2 "VV: Local script location: $SOURCE"
+  verbose 2 "VV: Remote script URL: $self_upgrade_url"
   verbose 1 "V: Local version: $VERSION"
-  verbose 1 "V: GitHub version: $github_version"
-  semver_diff=$(Semver::compare "$github_version" "$VERSION")
+  verbose 1 "V: Remote version: $self_upgrade_version"
+  semver_diff=$(Semver::compare "$self_upgrade_version" "$VERSION")
   if [[ $semver_diff -eq 1 ]]; then
-    printf 'Downloading betterdiscordctl...\n' >&2
-    if curl -LSso "$SOURCE" "$upgrade_url"; then
-      printf 'Successfully updated betterdiscordctl.\n' >&2
+    >&2 printf 'Downloading betterdiscordctl...\n'
+    if curl -LSso "$SOURCE" "$self_upgrade_url"; then
+      >&2 printf 'Successfully self-upgraded betterdiscordctl.\n'
     else
-      die 'ERROR: Failed to update betterdiscordctl.' \
-          'You may want to rerun this command with sudo.'
+      die 'ERROR: Failed to self-upgrade betterdiscordctl.' \
+          "You may want to rerun this command with \`sudo\`."
     fi
   else
     if [[ $semver_diff -eq 0 ]]; then
-      printf 'betterdiscordctl is already the latest version (%s).\n' \
-          "$VERSION" >&2
+      >&2 printf 'betterdiscordctl is already the latest version (%s).\n' \
+          "$VERSION"
     else
-      printf 'Local version (%s) is higher than GitHub version (%s).\n' \
-          "$VERSION" "$github_version" >&2
+      >&2 printf 'Local version (%s) is higher than remote version (%s).\n' \
+          "$VERSION" "$self_upgrade_version"
     fi
   fi
 }
@@ -246,117 +396,180 @@ bdc_upgrade() {
 # Implementation functions
 
 bdc_main() {
-  if [[ -z $d_modules ]]; then
-    if [[ $flatpak ]]; then bdc_flatpak
-    elif [[ $snap ]]; then bdc_snap
-    else bdc_scan; fi
-  else
-    [[ -d $d_modules ]] || die 'ERROR: Discord modules directory not found.'
-    d_flavor=${d_modules%/*/modules}
-    d_flavor=${d_flavor##*/discord}
-  fi
-  [[ -d $d_modules ]] || die 'ERROR: Discord modules directory not found.' \
-      'Try specifying it with "--modules".'
+  xdg_discover_config
+  bdc_discover
   d_core=$d_modules/discord_desktop_core
-  [[ -d $d_core ]] || die "ERROR: Directory 'discord_desktop_core' not found in $d_modules"
+  [[ -d $d_core ]] || die "ERROR: Directory 'discord_desktop_core' not found in: $d_modules"
+  bd_remote_init
+  bd_asar=$bd_config/data/$bd_asar_name
+  bd_asar_escaped=${bd_asar/\\/\\\\}
 }
 
-bdc_scan() {
-  for d_flavor in "${d_flavors[@]}"; do
-    verbose 2 "VV: Trying flavor '$d_flavor'"
-    d_config=$xdg_config/discord${d_flavor,,}
-    if [[ ! -d $d_config ]]; then
-      printf 'WARN: Discord %s config directory not found (%s).\n' \
-          "$d_flavor" "$d_config" >&2
-      continue
-    fi
-    if [[ -z $d_modules ]]; then
-      bdc_find_modules
-    elif [[ ! -d $d_modules ]]; then
-      die 'ERROR: Discord modules directory not found.'
-    fi
-    break
-  done
+xdg_discover_config() {
+  case "$d_install" in
+    traditional)
+      xdg_config=${XDG_CONFIG_HOME:-$HOME/.config}
+      ;;
+    snap)
+      # shellcheck disable=SC2016
+      # Expansion should happen inside snap's shell.
+      xdg_config=$("$snap_bin" run --shell discord \
+          <<< $'printf -- \'%s/.config\n\' "$SNAP_USER_DATA" 1>&3' 3>&1)
+      ;;
+    flatpak)
+      # shellcheck disable=SC2016
+      # Expansion should happen inside flatpak's shell.
+      xdg_config=$("$flatpak_bin" run --command=sh com.discordapp.Discord \
+          -c $'printf -- \'%s\n\' "$XDG_CONFIG_HOME"')
+      xdg_config=${xdg_config:-$HOME/.var/app/com.discordapp.Discord/config}
+      ;;
+    *) die "ERROR: [xdg_discover_config] Unknown Discord install variant: $d_install" ;;
+  esac
+  [[ $xdg_config ]] || >&2 printf "WARN: XDG user config directory (\$XDG_CONFIG_HOME) not found.\n"
+}
+
+bdc_discover() {
+  d_discover_config
+  bd_discover_config
+  bdc_find_modules
 }
 
 bdc_find_modules() {
-  [[ -d $d_config ]] || die "ERROR: Discord $d_flavor config directory not found ($d_config)."
-  declare -a all_d_modules
-  all_d_modules=("$d_config/"+([0-9]).+([0-9]).+([0-9])/modules)
-  ((${#all_d_modules[@]})) || die 'ERROR: Discord modules directory not found.'
-  d_modules=${all_d_modules[-1]}
-  verbose 1 "V: Found modules in $d_modules"
-}
-
-bdc_snap() {
-  # shellcheck disable=SC2016
-  # Expansion should happen inside snap's shell.
-  xdg_config=$("$snap_bin" run --shell discord \
-      <<< $'printf -- \'%s/.config\n\' "$SNAP_USER_DATA" 1>&3' 3>&1)
-  d_config=$xdg_config/discord
-  bd_config=$xdg_config/BetterDiscord
-  bd_asar_dest=$bd_config/data/betterdiscord.asar
-  bdc_find_modules
-}
-
-bdc_flatpak() {
-  # shellcheck disable=SC2016
-  # Expansion should happen inside flatpak's shell.
-  xdg_config=$("$flatpak_bin" run --command=sh com.discordapp.Discord \
-      -c $'printf -- \'%s\n\' "$XDG_CONFIG_HOME"')
-  d_config=${xdg_config:-$HOME/.var/app/com.discordapp.Discord/config}/discord
-  bd_config=$xdg_config/BetterDiscord
-  bd_asar_dest=$bd_config/data/betterdiscord.asar
-  bdc_find_modules
+  if [[ $d_modules ]]; then
+    [[ -d $d_modules ]] || die "ERROR: Discord modules directory not found: $d_modules"
+    d_flavor=${d_modules%/*/modules}
+    d_flavor=${d_flavor##*/discord}
+  else
+    [[ -d $d_config ]] || die "ERROR: Discord $d_flavor config directory not found: $d_config"
+    declare -a all_d_modules
+    all_d_modules=("$d_config/"+([0-9]).+([0-9]).+([0-9])/modules)
+    ((${#all_d_modules[@]})) || die 'ERROR: Discord modules directory not found.' \
+        'Try specifying it with --d-modules.'
+    d_modules=${all_d_modules[-1]}
+    verbose 1 "V: Found modules in $d_modules"
+  fi
 }
 
 bdc_kill() {
-  printf 'Killing Discord %s processes...\n' "$d_flavor" >&2
-  pkill -exi -KILL "discord${d_flavor:0:8}" || printf 'No active processes found.\n' >&2
+  >&2 printf 'Killing Discord %s processes...\n' "$d_flavor"
+  pkill -exi -KILL "discord${d_flavor:0:8}" || >&2 printf 'No active processes found.\n'
 }
 
-bd_install_asar() {
-  verbose 2 "VV: BetterDiscord asar installation: $bd_asar_dest"
-  if [[ -z $bd_asar ]]; then
-    declare release=https://github.com/$bd_repo/releases/$bd_release
-    verbose 1 "VV: BetterDiscord release URL: $release"
-    verbose 1 "V: Downloading BetterDiscord asar..."
-    curl -LSso "$bd_asar_dest" --create-dirs \
-        "$release/download/betterdiscord.asar"
-  else
-    if [[ ${flatpak+x} ]] || [[ ${snap+x} ]]; then
-      verbose 'V: Copying BetterDiscord asar...'
-      install -D "$bd_asar" "$bd_asar_dest"
-    fi
+d_discover_config() {
+  [[ $xdg_config ]] || die "ERROR: XDG user config directory (\$XDG_CONFIG_HOME) not found."
+  case "$d_install" in
+    traditional)
+      for d_flavor in "${d_flavors[@]}"; do
+        verbose 2 "VV: Trying flavor '$d_flavor'"
+        d_config=$xdg_config/discord${d_flavor,,}
+        if [[ -d $d_config ]]; then
+          break
+        fi
+        >&2 printf 'WARN: Discord %s config directory not found (%s).\n' \
+            "$d_flavor" "$d_config"
+      done
+      ;;
+    snap|flatpak)
+      d_config=$xdg_config/discord
+      if [[ ! -d $d_config ]]; then
+        >&2 printf 'WARN: Discord %s config directory not found (%s).\n' \
+            "$d_install" "$d_config"
+      fi
+      ;;
+    *) die "ERROR: [d_discover_config] Unknown Discord install variant: $d_install" ;;
+  esac
+}
+
+bd_discover_config() {
+  [[ $xdg_config ]] || die "ERROR: XDG user config directory (\$XDG_CONFIG_HOME) not found."
+  case "$d_install" in
+    traditional|snap|flatpak)
+      bd_config=$xdg_config/BetterDiscord
+      ;;
+    *) die "ERROR: [bd_discover_config] Unknown Discord install variant: $d_install" ;;
+  esac
+}
+
+# TODO: Integrate $bd_remote into main & install
+
+bd_remote_init() {
+  case "$bd_remote" in
+    github) bd_remote_init_github ;;
+    url) bd_remote_init_url ;;
+    dir) bd_remote_init_dir ;;
+    *) die "ERROR: [bd remote init] Unknown remote type: $bd_remote" ;;
+  esac
+  verbose 2 "VV: BetterDiscord remote asar path: $bd_remote_asar"
+  bd_asar_name=${bd_remote_asar##*/}
+}
+bd_remote_init_github() {
+  bd_remote_url=https://github.com/$bd_remote_github_owner/$bd_remote_github_repo/releases/$bd_remote_github_release/download
+  verbose 2 "VV: BetterDiscord remote GitHub repository owner: $bd_remote_github_owner"
+  verbose 2 "VV: BetterDiscord remote GitHub repository name: $bd_remote_github_repo"
+  verbose 2 "VV: BetterDiscord remote GitHub repository release: $bd_remote_github_release"
+  bd_remote_init_url
+}
+bd_remote_init_url() {
+  bd_remote_dir=$bd_config/data
+  verbose 2 "VV: BetterDiscord remote URL: $bd_remote_url"
+  bd_remote_init_dir
+}
+bd_remote_init_dir() {
+  verbose 2 "VV: BetterDiscord remote directory: $bd_remote_dir"
+}
+
+bd_remote_install() {
+  case "$bd_remote" in
+    github) bd_remote_install_github ;;
+    url) bd_remote_install_url ;;
+    dir) bd_remote_install_dir ;;
+    *) die "ERROR: [bd remote install] Unknown remote type: $bd_remote" ;;
+  esac
+}
+bd_remote_install_github() {
+  verbose 2 "VV: Installing remote BetterDiscord (GitHub)..."
+  bd_remote_install_url
+}
+bd_remote_install_url() {
+  verbose 2 "VV: Installing remote BetterDiscord (URL)..."
+  verbose 1 "V: Downloading BetterDiscord asar..."
+  curl -LSso "$bd_remote_dir/$bd_remote_asar" --create-dirs \
+      "$bd_remote_url/$bd_remote_asar"
+  bd_remote_install_dir
+}
+bd_remote_install_dir() {
+  verbose 2 "VV: Installing remote BetterDiscord (directory)..."
+  if [[ "$bd_remote_dir/$bd_remote_asar" != "$bd_asar" ]]; then
+    verbose 1 "V: Copying BetterDiscord asar..."
+    install -Dm 644 "$bd_remote_dir/$bd_remote_asar" "$bd_asar"
   fi
 }
 
 bdc_clean_legacy() {
   if [[ -d $d_core/core ]]; then
-    printf 'Removing legacy core directory...\n' >&2
+    >&2 printf 'Removing legacy core directory...\n'
     rm -rf "$d_core/core"
   fi
   if [[ -d $d_core/injector ]]; then
-    printf 'Removing legacy injector directory...\n' >&2
+    >&2 printf 'Removing legacy injector directory...\n'
     rm -rf "$d_core/injector"
   fi
   if [[ -d $bdc_data ]]; then
     if [[ -f "$bdc_data/bd_map" || -d "$bdc_data/bd" ]]; then
-      printf 'Removing legacy machine-specific data...\n' >&2
+      >&2 printf 'Removing legacy machine-specific data...\n'
       rm -rf "$bdc_data/bd_map" "$bdc_data/bd"
     fi
   fi
 }
 
-bd_patch() {
+bd_install() {
   verbose 1 'V: Injecting into index.js...'
-  declare escaped_asar=${bd_asar_dest/\\/\\\\}
   printf $'require("%s");
 module.exports = require(\'./core.asar\');
-' "${escaped_asar//\"/\\\"}" > "$d_core/index.js"
+' "$bd_asar_escaped" > "$d_core/index.js"
 }
 
-bd_unpatch() {
+bd_uninstall() {
   verbose 1 'V: Removing BetterDiscord injection...'
   printf $'module.exports = require(\'./core.asar\');
 ' > "$d_core/index.js"
@@ -465,10 +678,8 @@ case "$cmd" in
     bdc_main
     bdc_uninstall
     ;;
-  upgrade)
-    bdc_upgrade
+  self-upgrade)
+    bdc_self_upgrade
     ;;
-  *)
-    die "ERROR: Unknown command: $cmd"
-    ;;
+  *) die "ERROR: Unknown command (in command dispatch): $cmd" ;;
 esac
