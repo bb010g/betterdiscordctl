@@ -124,7 +124,7 @@ betterdiscordctl (mostly) follows the Fuchsia
 
   Calls this `snap` executable.
 
-* `--upgrade-url` `<upgrade_url>` (default `https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl`)
+* `--self-upgrade-url` `<self_upgrade_url>` (default `https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl`)
 
   Use the specified URL for self-upgrading betterdiscordctl.
 
