@@ -4,7 +4,7 @@ set -ueo pipefail
 shopt -s dotglob extglob nullglob
 
 # Constants
-VERSION=2.0.0
+VERSION=2.0.1
 SOURCE=$(readlink -f "${BASH_SOURCE[0]}")
 DISABLE_SELF_UPGRADE=
 
@@ -194,7 +194,7 @@ while :; do
       if [[ ${2:+x} ]]; then bd_remote_asar=$2; shift
       else die_non_empty_option "$1"; fi
       ;;
-    --d-install)
+    -i|--d-install)
       if [[ ${2:+x} ]]; then case "$2" in
         traditional|flatpak|snap) d_install=$2 ;;
         *) die_with_help "ERROR: Unknown top-level $1 value: $2" ;;
