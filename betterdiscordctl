@@ -16,8 +16,8 @@ d_modules=
 bd_remote=github
 bd_remote_dir=
 bd_remote_url=
-bd_remote_github_owner=rauenzi
-bd_remote_github_repo=BetterDiscordApp
+bd_remote_github_owner=BetterDiscord
+bd_remote_github_repo=BetterDiscord
 bd_remote_github_release=latest
 bd_remote_asar=betterdiscord.asar
 d_install=traditional
@@ -70,7 +70,7 @@ Options:
   -H, --bd-remote-github        download BetterDiscord files at GitHub
     <bd_r_github>               repository release <bd_r_github>, of form
                                 [~<owner>][/<repo>][#<release>]. Defaults to
-                                '~rauenzi/BetterDiscordApp#latest'. Overrides
+                                '~BetterDiscord/BetterDiscord#latest'. Overrides
                                 earlier --bd-remote-dir or --bd-remote-github.
                                 An omitted part keeps a previous value.
                                 <owner> and <repo> must not contain '~', '/',

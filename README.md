@@ -86,14 +86,14 @@ betterdiscordctl (mostly) follows the Fuchsia
   Works like `--bd-remote-dir` with files downloaded into BetterDiscord's data
   directory.
 
-* `-H`, `--bd-remote-github` `<bd_r_github>` (default `~rauenzi/BetterDiscordApp#latest`)
+* `-H`, `--bd-remote-github` `<bd_r_github>` (default `~BetterDiscord/BetterDiscord#latest`)
 
   When installing BetterDiscord, use the specified GitHub repository, of form
   `[~<owner>][/<repo>][#<release>]`. Defaults to upstream BetterDiscord.
   Overrides earlier `--bd-remote-dir` or `--bd-remote-url`. Omitted parts keep
-  previous values (e.g. `-H '~rauenzi'` only changes the owner to `rauenzi`,
-  and `-H ''` changes nothing but still ensures the configured GitHub
-  repository will be used).
+  previous values (e.g. `-H '~BetterDiscord'` only changes the owner to
+  `BetterDiscord`, and `-H ''` changes nothing but still ensures the
+  configured GitHub repository will be used).
 
   Works like `--bd-remote-url` with a GitHub repository release download base
   URL.
