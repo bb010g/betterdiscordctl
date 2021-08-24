@@ -49,15 +49,15 @@ You can then install as follows (`#` means that a command needs root, which
 you can get by prefixing it with `sudo`):
 
 ```
-$ curl -O https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl
-$ chmod +x betterdiscordctl
-# mv betterdiscordctl /usr/local/bin
+curl -O https://raw.githubusercontent.com/bb010g/betterdiscordctl/master/betterdiscordctl
+chmod +x betterdiscordctl
+sudo mv betterdiscordctl /usr/local/bin
 ```
 
 You can then keep `betterdiscordctl` up to date with one command:
 
 ```
-# betterdiscordctl self-upgrade
+betterdiscordctl self-upgrade
 ```
 
 ## Options
