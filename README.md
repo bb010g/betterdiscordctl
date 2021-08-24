@@ -6,10 +6,37 @@ A manager for BetterDiscord on Linux.
 
 ### Packages
 
-- Arch: https://aur.archlinux.org/packages/betterdiscordctl-git
-- Ubuntu: https://launchpad.net/~chronobserver/+archive/ubuntu/betterdiscordctl
-- Fedora: https://copr.fedorainfracloud.org/coprs/observeroftime/betterdiscordctl
-- NixOS: https://search.nixos.org/packages?channel=unstable&query=betterdiscordctl&show=betterdiscordctl
+- Arch Linux
+  ```
+  sudo yay -S betterdiscordctl-git
+  ```
+- Ubuntu 18.04 LTS, Ubuntu 20.04 LTS, Ubuntu 20.10
+  ```
+  sudo add-apt-repository ppa:chronobserver/betterdiscordctl
+  sudo apt update
+  sudo apt install betterdiscordctl
+  ```
+- Fedora 34, Fedora 35, and Fedora Rawhide
+  ```
+  sudo dnf copr enable observeroftime/betterdiscordctl
+  sudo dnf install betterdiscordctl
+  ```
+- OpenSUSE Tumbleweed	(***OpenSUSE Tumbleweed and Opensuse Leap 15.3 steps are not interchangeable.***)
+  ```
+  sudo zypper ar https://copr.fedorainfracloud.org/coprs/observeroftime/betterdiscordctl/repo/opensuse-tumbleweed/observeroftime-betterdiscordctl-opensuse-tumbleweed.repo
+  sudo zypper ref
+  sudo zypper in betterdiscordctl
+  ```
+- OpenSUSE Leap 15.3 (***OpenSUSE Tumbleweed and Opensuse Leap 15.3 steps are not interchangeable***)
+  ```
+  sudo zypper ar https://copr.fedorainfracloud.org/coprs/observeroftime/betterdiscordctl/repo/opensuse-leap-15.3/observeroftime-betterdiscordctl-opensuse-leap-15.3.repo
+  sudo zypper ref
+  sudo zypper in betterdiscordctl
+  ```
+- NixOS 21.05 and NixOS Unstable
+  ```
+  nix-env -iA nixos.betterdiscordctl
+  ```
 
 ### Manual
 
