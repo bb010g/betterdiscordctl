@@ -166,6 +166,10 @@ disabled, in which case the package's maintainer should keep it up to date.
 * `betterdiscordctl -f canary install`
 
   Installs BetterDiscord to the Canary flavor.
+  
+* `betterdiscordctl -f development install`
+
+  Installs BetterDiscord to the Development flavor.
 
 * `betterdiscordctl -i flatpak reinstall`
 
