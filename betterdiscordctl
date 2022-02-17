@@ -11,7 +11,7 @@ DISABLE_SELF_UPGRADE=
 # Options
 cmd=
 verbosity=0
-d_flavors=('' canary ptb)
+d_flavors=('' development canary ptb)
 d_modules=
 bd_remote=github
 bd_remote_dir=
