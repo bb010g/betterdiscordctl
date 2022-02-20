@@ -58,7 +58,7 @@ betterdiscordctl (mostly) follows the Fuchsia
 
   Decreases the verbosity level, for progressively less debugging information.
 
-* `-f`, `--d-flavors` `<d_flavors>` (default `:canary:ptb`)
+* `-f`, `--d-flavors` `<d_flavors>` (default `:canary:ptb:development`)
 
   When scanning, looks for installations with the given suffixes (case
   insensitive, both hyphenated and unhyphenated). Stable is `''`, as it has no
@@ -167,10 +167,6 @@ disabled, in which case the package's maintainer should keep it up to date.
 
   Installs BetterDiscord to the Canary flavor.
   
-* `betterdiscordctl -f development install`
-
-  Installs BetterDiscord to the Development flavor.
-
 * `betterdiscordctl -i flatpak reinstall`
 
   Reinstalls BetterDiscord to a Discord installed via Flatpak.
