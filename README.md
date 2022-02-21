@@ -166,7 +166,7 @@ disabled, in which case the package's maintainer should keep it up to date.
 * `betterdiscordctl -f canary install`
 
   Installs BetterDiscord to the Canary flavor.
-  
+
 * `betterdiscordctl -i flatpak reinstall`
 
   Reinstalls BetterDiscord to a Discord installed via Flatpak.
