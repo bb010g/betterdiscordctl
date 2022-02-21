@@ -58,7 +58,7 @@ betterdiscordctl (mostly) follows the Fuchsia
 
   Decreases the verbosity level, for progressively less debugging information.
 
-* `-f`, `--d-flavors` `<d_flavors>` (default `:canary:ptb`)
+* `-f`, `--d-flavors` `<d_flavors>` (default `:canary:ptb:development`)
 
   When scanning, looks for installations with the given suffixes (case
   insensitive, both hyphenated and unhyphenated). Stable is `''`, as it has no

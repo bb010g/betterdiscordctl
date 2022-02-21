@@ -11,7 +11,7 @@ DISABLE_SELF_UPGRADE=
 # Options
 cmd=
 verbosity=0
-d_flavors=('' canary ptb)
+d_flavors=('' canary ptb development)
 d_modules=
 bd_remote=github
 bd_remote_dir=
@@ -51,8 +51,8 @@ Options:
   -q, --quiet                   decrease verbosity
   -f, --d-flavors <d_flavors>   discover Discord installations with the
                                 colon-separated list of suffixes <d_flavors>.
-                                Defaults to ':canary:ptb'. Flavors must be
-                                lowercase. Stable is flavor '', as it's
+                                Defaults to ':canary:ptb:development'. Flavors must 
+                                be lowercase. Stable is flavor '', as it's
                                 unsuffixed. Flavors shouldn't include spaces.
   -m, --d-modules <d_modules>   use Discord modules in directory <d_modules>.
                                 Defaults to discovery. Discord's user-specific
