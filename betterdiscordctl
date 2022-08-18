@@ -337,8 +337,20 @@ bdc_install() {
   >&2 printf 'Installed. (Restart Discord if necessary.)\n'
 }
 
+bdc_install_prompt() {
+  echo -n "ERROR: Not installed. Install now? [Y/n] "
+  read ans
+
+  if [[ "$ans" = "Y" || "$ans" = 'y' ]]; then
+    bdc_install
+    exit
+  else
+    exit
+  fi
+}
+
 bdc_reinstall() {
-  grep -Fq "$bd_asar_name" "$d_core/index.js" || die 'ERROR: Not installed.'
+  grep -Fq "$bd_asar_name" "$d_core/index.js" || bdc_install_prompt
   bdc_clean_legacy
 
   bdc_kill
