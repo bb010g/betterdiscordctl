@@ -16,7 +16,7 @@ args = parser.parse_args()
 
 if args.version:
     print(pname + " " + version)
-#elif args.command:
+elif args.command:
     if args.command == "status":
         print("test")
     if args.command == "install":
