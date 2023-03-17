@@ -1,4 +1,4 @@
-import argparse, os
+import argparse, os, subprocess
 
 pname = "betterdiscordctl"
 # Constants
@@ -27,7 +27,13 @@ def verbose(vmsg):
             print(vmsg)
         
 def xdg_discover_config():
+    # finding config directory on linux
+    #traditional dir
     if d_install == "traditional":
+        xdg_config = "~/.config/"
+    elif d_install == "snap":
+        #snap dir
+        xdg_config = subprocess.run(["snap", "run", "--shell", "discord"], stdout=subprocess.PIPE)
             
 
 if args.version:
