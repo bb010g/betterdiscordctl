@@ -15,6 +15,7 @@ parser.add_argument("-V", "--version", action='store_true', help="display versio
 parser.add_argument("command", choices=["status", "install", "reinstall", "uninstall", "self-upgrade"])
 parser.add_argument('-v', "--verbose", action='store_true', help="increase verbosity")
 parser.add_argument('-q', "--quiet", action='store_true', help="decrease verbosity")
+parser.add_argument('-i', "--d-install", choices=["traditional", "flatpak", "snap"])
 args = parser.parse_args()
 
 def verbose(vmsg):
@@ -22,18 +23,37 @@ def verbose(vmsg):
     if verbosity > 0:
         return True
         if not vmsg == str:
-            print("InvalidStringError: The input is not a valid string")
+            print("Verbose Error: InvalidStringError: The input is not a valid string")
+            exit()
+        elif not vmsg:
+            print("Verbose Error: EmptyStringError: The input can't be an empty string")
         elif vmsg == str:
             print(vmsg)
         
 def xdg_discover_config():
-    # finding config directory on linux
-    #traditional dir
+    global d_install, xdg_config
+    # finding config directory in linux
     if d_install == "traditional":
+        #traditional dir
         xdg_config = "~/.config/"
     elif d_install == "snap":
         #snap dir
-        xdg_config = subprocess.run(["snap", "run", "--shell", "discord"], stdout=subprocess.PIPE)
+        snap_user_data = os.environ['SNAP_USER_DATA']
+        xdg_config = os.path.join(snap_user_data, 'discord', '.config')
+    elif d_install == "flatpak":
+        # flatpak dir
+        flatpak_bin = '/usr/bin/flatpak'
+
+        # Path to the Discord app in the flatpak repository
+        discord_app = 'com.discordapp.Discord'
+
+        # Try to obtain the configuration directory using the XDG_CONFIG_HOME environment variable
+        cmd = f"printf -- '%s\n' \"$XDG_CONFIG_HOME\""
+        xdg_config = subprocess.run([flatpak_bin, 'run', '--command=sh', discord_app, '-c', cmd], stdout=subprocess.PIPE, text=True, env=os.environ).stdout.strip()
+
+        if not xdg_config:
+            xdg_config = f"~/.var/app/{discord_app}/config"
+
             
 
 if args.version:
