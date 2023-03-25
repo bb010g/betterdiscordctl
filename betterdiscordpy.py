@@ -10,7 +10,11 @@ APP_NAME: str = "betterdiscordctl"
 VERSION: str = "2.0.1"
 TRADITIONAL_LINUX_CONFIG_DIR: str = "~/.config/"
 
-d_flavors: list[str] = ["canary", "ptb", "development"]
+d_flavors: list[str] = [
+    "canary",
+    "ptb",
+    "development",
+]
 self_upgrade_url: str = "https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl"  # fixme
 
 
@@ -41,7 +45,7 @@ def getLinuxConfigDir(installation_type: str) -> str:
         cmd = "echo $XDG_CONFIG_HOME"
         xdg_config = subprocess.run(
             [flatpak_bin, "run", "--command=sh", discord_app_name, "-c", cmd],
-            stdout=subprocess.PIPE, text=True, env=os.environ,
+            stdout=subprocess.PIPE, text=True, env=os.environ, check=True,
         ).stdout.strip()
         if xdg_config:
             return xdg_config
