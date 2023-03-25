@@ -15,7 +15,7 @@ self_upgrade_url: str = "https://github.com/bb010g/betterdiscordctl/raw/master/b
 
 
 def getVerbosityLevel(arguments: argparse.Namespace) -> int:
-    if arguments.verbose:
+    if arguments.verbose:  # pylint: disable=no-else-return
         if arguments.quiet:
             raise exceptions.InvalidVerbosityConfigurationException()
         return logging.DEBUG
@@ -29,7 +29,7 @@ def initLogger(verbosity_level: int, message_format: str = "[%(asctime)s] [%(lev
 
 
 def getLinuxConfigDir(installation_type: str) -> str:
-    if installation_type == "traditional":
+    if installation_type == "traditional":  # pylint: disable=no-else-return
         return TRADITIONAL_LINUX_CONFIG_DIR
     elif installation_type == "snap":
         snap_user_data = os.getenv("SNAP_USER_DATA")
@@ -45,9 +45,9 @@ def getLinuxConfigDir(installation_type: str) -> str:
         ).stdout.strip()
         if xdg_config:
             return xdg_config
-        else:
-            default_flatpak_config = f".var/app/{discord_app_name}/config"
-            return os.path.join(os.getenv("HOME"), default_flatpak_config)
+
+        default_flatpak_config = f".var/app/{discord_app_name}/config"
+        return os.path.join(os.getenv("HOME"), default_flatpak_config)
 
     raise exceptions.InvalidInstallTypeException(installation_type)
     # TODO add win & mac in future

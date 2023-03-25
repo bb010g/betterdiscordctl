@@ -10,7 +10,7 @@ repos:
     rev: v2.17.1
     hooks:
       - id: pylint
-        #args: [ "--rcfile=./pylintrc" ]  FIXME
+        args: [ "--rcfile=./pylintrc" ]
   - repo: https://github.com/Lucas-C/pre-commit-hooks
     rev: v1.4.2
     hooks:
