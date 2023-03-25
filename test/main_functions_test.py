@@ -8,7 +8,7 @@ from util import exceptions
 
 
 class MyTestCase(unittest.TestCase):
-    def testVerbosityLevelGetter(self):
+    def testVerbosityLevelGetter(self) -> None:
         self.assertRaises(exceptions.InvalidVerbosityConfigurationException, betterdiscordpy.getVerbosityLevel,
                           argparse.Namespace(quiet=True, verbose=True))
         self.assertEqual(logging.WARNING,
@@ -18,7 +18,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(logging.INFO,
                          betterdiscordpy.getVerbosityLevel(argparse.Namespace(quiet=False, verbose=False)))
 
-    def testConfigDirGetter(self):
+    def testConfigDirGetter(self) -> None:
         self.assertRaises(exceptions.InvalidInstallTypeException, betterdiscordpy.getLinuxConfigDir, "I don't exist")
         self.assertEqual(betterdiscordpy.TRADITIONAL_LINUX_CONFIG_DIR, betterdiscordpy.getLinuxConfigDir("traditional"))
 
