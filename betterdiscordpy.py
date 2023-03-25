@@ -18,7 +18,9 @@ d_flavors: list[str] = [
     "ptb",
     "development",
 ]
-self_upgrade_url: str = "https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl"  # fixme
+
+# FIXME should be some binary release in the future
+self_upgrade_url: str = "https://github.com/bb010g/betterdiscordctl/raw/master/betterdiscordctl"
 
 
 def getVerbosityLevel(arguments: argparse.Namespace) -> int:
@@ -62,7 +64,10 @@ def getLinuxConfigDir(installation_type: str) -> str:
 
 def getArgumentsParser() -> argparse.ArgumentParser:
     arg_parser = argparse.ArgumentParser(description="Manage BetterDiscord installations on Linux")
-    arg_parser.add_argument("-V", "--version", action="store_true", help="display version info and exit")
+    arg_parser.add_argument(
+        "-V", "--version", action="store_true",
+        help="display version info and exit",
+    )
     arg_parser.add_argument(
         "command", choices=["status", "install", "reinstall", "uninstall", "self-upgrade"],
         nargs="?",

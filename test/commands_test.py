@@ -19,7 +19,10 @@ class CommandsTest(unittest.TestCase):
             output = logger.output
             self.assertEqual(expected_logs_amount, len(output))
             self.validateLogMessage(log=output[0], level="DEBUG", message="Running command: status")
-            self.validateLogMessage(log=output[1], level="DEBUG", message="Received args: Namespace(verbose=True)")
+            self.validateLogMessage(
+                log=output[1], level="DEBUG",
+                message="Received args: Namespace(verbose=True)",
+            )
 
     def testInstallCommand(self) -> None:
         dummy_args = argparse.Namespace(verbose=True, d_install="flatpak")
@@ -29,7 +32,10 @@ class CommandsTest(unittest.TestCase):
             commands.install(dummy_args)
             output = logger.output
             self.assertEqual(expected_logs_amount, len(output))
-            self.validateLogMessage(log=output[0], level="DEBUG", message="Running command: install")
+            self.validateLogMessage(
+                log=output[0], level="DEBUG",
+                message="Running command: install",
+            )
             self.validateLogMessage(
                 log=output[1], level="DEBUG",
                 message="Received args: Namespace(verbose=True, d_install='flatpak')",
@@ -43,8 +49,14 @@ class CommandsTest(unittest.TestCase):
             commands.reinstall(dummy_args)
             output = logger.output
             self.assertEqual(expected_logs_amount, len(output))
-            self.validateLogMessage(log=output[0], level="DEBUG", message="Running command: reinstall")
-            self.validateLogMessage(log=output[1], level="DEBUG", message="Received args: Namespace(verbose=True)")
+            self.validateLogMessage(
+                log=output[0], level="DEBUG",
+                message="Running command: reinstall",
+            )
+            self.validateLogMessage(
+                log=output[1], level="DEBUG",
+                message="Received args: Namespace(verbose=True)",
+            )
 
     def testUninstallCommand(self) -> None:
         dummy_args = argparse.Namespace(verbose=True)
@@ -54,8 +66,14 @@ class CommandsTest(unittest.TestCase):
             commands.uninstall(dummy_args)
             output = logger.output
             self.assertEqual(expected_logs_amount, len(output))
-            self.validateLogMessage(log=output[0], level="DEBUG", message="Running command: uninstall")
-            self.validateLogMessage(log=output[1], level="DEBUG", message="Received args: Namespace(verbose=True)")
+            self.validateLogMessage(
+                log=output[0], level="DEBUG",
+                message="Running command: uninstall",
+            )
+            self.validateLogMessage(
+                log=output[1], level="DEBUG",
+                message="Received args: Namespace(verbose=True)",
+            )
 
     def testSelfUpgradeCommand(self) -> None:
         dummy_args = argparse.Namespace(verbose=True)
@@ -65,8 +83,14 @@ class CommandsTest(unittest.TestCase):
             commands.selfUpgrade(dummy_args)
             output = logger.output
             self.assertEqual(expected_logs_amount, len(output))
-            self.validateLogMessage(log=output[0], level="DEBUG", message="Running command: self-upgrade")
-            self.validateLogMessage(log=output[1], level="DEBUG", message="Received args: Namespace(verbose=True)")
+            self.validateLogMessage(
+                log=output[0], level="DEBUG",
+                message="Running command: self-upgrade",
+            )
+            self.validateLogMessage(
+                log=output[1], level="DEBUG",
+                message="Received args: Namespace(verbose=True)",
+            )
 
 
 if __name__ == '__main__':

@@ -27,11 +27,20 @@ class MainFunctionsTest(unittest.TestCase):
         )
 
     def testConfigDirGetter(self) -> None:
-        self.assertRaises(exceptions.InvalidInstallTypeException, betterdiscordpy.getLinuxConfigDir, "I don't exist")
-        self.assertEqual(betterdiscordpy.TRADITIONAL_LINUX_CONFIG_DIR, betterdiscordpy.getLinuxConfigDir("traditional"))
+        self.assertRaises(
+            exceptions.InvalidInstallTypeException, betterdiscordpy.getLinuxConfigDir,
+            "I don't exist",
+        )
+        self.assertEqual(
+            betterdiscordpy.TRADITIONAL_LINUX_CONFIG_DIR,
+            betterdiscordpy.getLinuxConfigDir("traditional"),
+        )
 
         os.environ["SNAP_USER_DATA"] = "dummy"
-        self.assertEqual(os.path.join("dummy", "discord", ".config"), betterdiscordpy.getLinuxConfigDir("snap"))
+        self.assertEqual(
+            os.path.join("dummy", "discord", ".config"),
+            betterdiscordpy.getLinuxConfigDir("snap"),
+        )
         os.environ["SNAP_USER_DATA"] = ""
 
         # TODO test flatpak one
