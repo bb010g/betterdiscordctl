@@ -7,7 +7,7 @@ import betterdiscordpy
 from util import exceptions
 
 
-class MyTestCase(unittest.TestCase):
+class MainFunctionsTest(unittest.TestCase):
     def testVerbosityLevelGetter(self) -> None:
         self.assertRaises(
             exceptions.InvalidVerbosityConfigurationException, betterdiscordpy.getVerbosityLevel,

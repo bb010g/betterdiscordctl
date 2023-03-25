@@ -5,7 +5,7 @@ import unittest
 import commands
 
 
-class MyTestCase(unittest.TestCase):
+class CommandsTest(unittest.TestCase):
     def validateLogMessage(self, log: str, level: str, message: str) -> None:
         self.assertIn(level, log)
         self.assertIn(message, log)

@@ -101,6 +101,7 @@ enable=
 disable=
     attribute-defined-outside-init,
     logging-fstring-interpolation,
+    import-error,
     invalid-name,
     missing-docstring,
     protected-access,
