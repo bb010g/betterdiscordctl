@@ -4,6 +4,7 @@ import argparse
 import logging
 import os
 import subprocess
+import sys
 
 from commands import AVAILABLE_COMMANDS
 from util import exceptions
@@ -30,7 +31,7 @@ def getVerbosityLevel(arguments: argparse.Namespace) -> int:
     return logging.INFO
 
 
-def initLogger(verbosity_level: int, message_format: str = "[%(asctime)s] [%(levelname)-s]: %(message)s") -> None:
+def initLogger(verbosity_level: int, message_format: str = "%(message)s") -> None:
     logging.basicConfig(format=message_format, level=verbosity_level)
 
 
@@ -62,10 +63,16 @@ def getLinuxConfigDir(installation_type: str) -> str:
 def getArgumentsParser() -> argparse.ArgumentParser:
     arg_parser = argparse.ArgumentParser(description="Manage BetterDiscord installations on Linux")
     arg_parser.add_argument("-V", "--version", action="store_true", help="display version info and exit")
-    arg_parser.add_argument("command", choices=["status", "install", "reinstall", "uninstall", "self-upgrade"])
+    arg_parser.add_argument(
+        "command", choices=["status", "install", "reinstall", "uninstall", "self-upgrade"],
+        nargs="?",
+    )
     arg_parser.add_argument("-v", "--verbose", action="store_true", help="increase verbosity")
     arg_parser.add_argument("-q", "--quiet", action="store_true", help="decrease verbosity")
-    arg_parser.add_argument("-i", "--d-install", choices=["traditional", "flatpak", "snap"])
+    arg_parser.add_argument(
+        "-i", "--d-install", choices=["traditional", "flatpak", "snap"],
+        help="Discord's installation type",
+    )
     return arg_parser
 
 
@@ -76,6 +83,7 @@ if __name__ == "__main__":
 
     if args.version:
         print(f"{APP_NAME} {VERSION}")
+        sys.exit(0)
     elif args.command:
         AVAILABLE_COMMANDS[args.command](args)
     else:
