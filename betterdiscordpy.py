@@ -39,8 +39,10 @@ def getLinuxConfigDir(installation_type: str) -> str:
         discord_app_name = "com.discordapp.Discord"
 
         cmd = "echo $XDG_CONFIG_HOME"
-        xdg_config = subprocess.run([flatpak_bin, "run", "--command=sh", discord_app_name, "-c", cmd],
-                                    stdout=subprocess.PIPE, text=True, env=os.environ).stdout.strip()
+        xdg_config = subprocess.run(
+            [flatpak_bin, "run", "--command=sh", discord_app_name, "-c", cmd],
+            stdout=subprocess.PIPE, text=True, env=os.environ,
+        ).stdout.strip()
         if xdg_config:
             return xdg_config
         else:

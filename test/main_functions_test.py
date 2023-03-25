@@ -9,14 +9,22 @@ from util import exceptions
 
 class MyTestCase(unittest.TestCase):
     def testVerbosityLevelGetter(self) -> None:
-        self.assertRaises(exceptions.InvalidVerbosityConfigurationException, betterdiscordpy.getVerbosityLevel,
-                          argparse.Namespace(quiet=True, verbose=True))
-        self.assertEqual(logging.WARNING,
-                         betterdiscordpy.getVerbosityLevel(argparse.Namespace(quiet=True, verbose=False)))
-        self.assertEqual(logging.DEBUG,
-                         betterdiscordpy.getVerbosityLevel(argparse.Namespace(quiet=False, verbose=True)))
-        self.assertEqual(logging.INFO,
-                         betterdiscordpy.getVerbosityLevel(argparse.Namespace(quiet=False, verbose=False)))
+        self.assertRaises(
+            exceptions.InvalidVerbosityConfigurationException, betterdiscordpy.getVerbosityLevel,
+            argparse.Namespace(quiet=True, verbose=True),
+        )
+        self.assertEqual(
+            logging.WARNING,
+            betterdiscordpy.getVerbosityLevel(argparse.Namespace(quiet=True, verbose=False)),
+        )
+        self.assertEqual(
+            logging.DEBUG,
+            betterdiscordpy.getVerbosityLevel(argparse.Namespace(quiet=False, verbose=True)),
+        )
+        self.assertEqual(
+            logging.INFO,
+            betterdiscordpy.getVerbosityLevel(argparse.Namespace(quiet=False, verbose=False)),
+        )
 
     def testConfigDirGetter(self) -> None:
         self.assertRaises(exceptions.InvalidInstallTypeException, betterdiscordpy.getLinuxConfigDir, "I don't exist")

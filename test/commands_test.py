@@ -30,8 +30,10 @@ class MyTestCase(unittest.TestCase):
             output = logger.output
             self.assertEqual(expected_logs_amount, len(output))
             self.validateLogMessage(log=output[0], level="DEBUG", message="Running command: install")
-            self.validateLogMessage(log=output[1], level="DEBUG",
-                                    message="Received args: Namespace(verbose=True, d_install='flatpak')")
+            self.validateLogMessage(
+                log=output[1], level="DEBUG",
+                message="Received args: Namespace(verbose=True, d_install='flatpak')",
+            )
 
     def testReinstallCommand(self) -> None:
         dummy_args = argparse.Namespace(verbose=True)
