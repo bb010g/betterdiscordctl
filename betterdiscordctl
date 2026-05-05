@@ -399,7 +399,7 @@ bdc_self_upgrade() {
 bdc_main() {
   xdg_discover_config
   bdc_discover
-  d_core=$d_modules/discord_desktop_core
+  d_core=$d_modules/discord_desktop_core-1/discord_desktop_core
   [[ -d $d_core ]] || die "ERROR: Directory 'discord_desktop_core' not found in: $d_modules"
   bd_remote_init
   bd_asar=$bd_config/data/$bd_asar_name
@@ -443,7 +443,7 @@ bdc_find_modules() {
   else
     [[ -d $d_config ]] || die "ERROR: Discord $d_flavor config directory not found: $d_config"
     declare -a all_d_modules
-    all_d_modules=("$d_config/"+([0-9]).+([0-9]).+([0-9])/modules)
+    all_d_modules=("$d_config/app-"+([0-9]).+([0-9]).+([0-9])/modules)
     ((${#all_d_modules[@]})) || die 'ERROR: Discord modules directory not found.' \
         'Try specifying it with --d-modules.'
     d_modules=${all_d_modules[-1]}
