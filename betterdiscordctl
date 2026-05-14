@@ -418,11 +418,29 @@ xdg_discover_config() {
           <<< $'printf -- \'%s/.config\n\' "$SNAP_USER_DATA" 1>&3' 3>&1)
       ;;
     flatpak)
+      declare flatpak_app
       # shellcheck disable=SC2016
       # Expansion should happen inside flatpak's shell.
-      xdg_config=$("$flatpak_bin" run --command=sh com.discordapp.Discord \
-          -c $'printf -- \'%s\n\' "$XDG_CONFIG_HOME"')
-      xdg_config=${xdg_config:-$HOME/.var/app/com.discordapp.Discord/config}
+      for d_flavor in "${d_flavors[@]}"; do
+        case "$d_flavor" in
+          canary)
+            flatpak_app=com.discordapp.DiscordCanary
+            ;;
+          *)
+            flatpak_app=com.discordapp.Discord
+            ;;
+        esac
+
+        if $flatpak_bin list --app | grep -P '\b'"$flatpak_app"'\b' >/dev/null; then
+            # Set the flavor to the first discovered one to avoid unneccessary
+            # log messages later
+            d_flavors=("$d_flavor")
+            break;
+        fi
+      done
+      xdg_config=$("$flatpak_bin" run --command=sh $flatpak_app \
+        -c $'printf -- \'%s\n\' "$XDG_CONFIG_HOME"')
+      xdg_config=${xdg_config:-$HOME/.var/app/$flatpak_app/config}
       ;;
     *) die "ERROR: [xdg_discover_config] Unknown Discord install variant: $d_install" ;;
   esac
@@ -470,12 +488,22 @@ d_discover_config() {
             "$d_flavor" "$d_config"
       done
       ;;
-    snap|flatpak)
+    snap)
       d_config=$xdg_config/discord
       if [[ ! -d $d_config ]]; then
         >&2 printf 'WARN: Discord %s config directory not found (%s).\n' \
             "$d_install" "$d_config"
       fi
+      ;;
+    flatpak)
+      for d_flavor in "${d_flavors[@]}"; do
+        d_config=$xdg_config/discord${d_flavor,,}
+        if [[ -d $d_config ]]; then
+            break
+        fi
+        >&2 printf 'WARN: Discord %s %s config directory not found (%s).\n' \
+          "$d_install" "$d_flavor" "$d_config"
+      done
       ;;
     *) die "ERROR: [d_discover_config] Unknown Discord install variant: $d_install" ;;
   esac
