@@ -32,6 +32,7 @@ xdg_config=
 bdc_data=${XDG_DATA_HOME:-$HOME/.local/share}/betterdiscordctl
 d_config=
 bd_config=
+d_core_module=
 bd_asar=
 bd_asar_escaped=
 bd_asar_name=
@@ -329,6 +330,7 @@ BetterDiscord remote: %s
 
 bdc_install() {
   grep -Fq "$bd_asar_escaped" "$d_core/index.js" && die 'ERROR: Already installed.'
+  bd_prepare_core
   bdc_clean_legacy
 
   bd_remote_install
@@ -339,6 +341,7 @@ bdc_install() {
 
 bdc_reinstall() {
   grep -Fq "$bd_asar_name" "$d_core/index.js" || die 'ERROR: Not installed.'
+  bd_prepare_core
   bdc_clean_legacy
 
   bdc_kill
@@ -351,6 +354,7 @@ bdc_reinstall() {
 
 bdc_uninstall() {
   grep -Fq "$bd_asar_name" "$d_core/index.js" || die 'ERROR: Not installed.'
+  bd_prepare_core
   bdc_clean_legacy
 
   bdc_kill
@@ -399,7 +403,13 @@ bdc_self_upgrade() {
 bdc_main() {
   xdg_discover_config
   bdc_discover
-  d_core=$d_modules/discord_desktop_core-1/discord_desktop_core
+  if [[ -d $d_modules/discord_desktop_core-1/discord_desktop_core ]]; then
+    d_core_module=$d_modules/discord_desktop_core-1
+    d_core=$d_modules/discord_desktop_core-1/discord_desktop_core
+  else
+    d_core_module=$d_modules/discord_desktop_core
+    d_core=$d_modules/discord_desktop_core
+  fi
   [[ -d $d_core ]] || die "ERROR: Directory 'discord_desktop_core' not found in: $d_modules"
   bd_remote_init
   bd_asar=$bd_config/data/$bd_asar_name
@@ -443,7 +453,10 @@ bdc_find_modules() {
   else
     [[ -d $d_config ]] || die "ERROR: Discord $d_flavor config directory not found: $d_config"
     declare -a all_d_modules
-    all_d_modules=("$d_config/app-"+([0-9]).+([0-9]).+([0-9])/modules)
+    all_d_modules=(
+      "$d_config/app-"+([0-9]).+([0-9]).+([0-9])/modules
+      "$d_config/"+([0-9]).+([0-9]).+([0-9])/modules
+    )
     ((${#all_d_modules[@]})) || die 'ERROR: Discord modules directory not found.' \
         'Try specifying it with --d-modules.'
     d_modules=${all_d_modules[-1]}
@@ -561,6 +574,22 @@ bdc_clean_legacy() {
       rm -rf "$bdc_data/bd_map" "$bdc_data/bd"
     fi
   fi
+}
+
+bd_prepare_core() {
+  if [[ ! -w $d_core/index.js ]]; then
+    declare d_core_module_parent d_core_module_tmp d_core_module_old
+    d_core_module_parent=${d_core_module%/*}
+    d_core_module_tmp=$(mktemp -d "$d_core_module_parent/.betterdiscordctl.XXXXXX")
+    cp -R "$d_core_module/." "$d_core_module_tmp"
+    chmod -R u+w "$d_core_module_tmp"
+    d_core_module_old=$(mktemp -d "$d_core_module_parent/.betterdiscordctl-old.XXXXXX")
+    rmdir "$d_core_module_old"
+    mv "$d_core_module" "$d_core_module_old"
+    mv "$d_core_module_tmp" "$d_core_module"
+    rm -rf "$d_core_module_old" || >&2 printf 'WARN: Failed to remove old Discord core module copy: %s\n' "$d_core_module_old"
+  fi
+  [[ -w $d_core/index.js ]] || die "ERROR: Discord core module is not writable: $d_core/index.js"
 }
 
 bd_install() {
