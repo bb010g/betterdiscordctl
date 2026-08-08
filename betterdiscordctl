@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+/#!/usr/bin/env bash
 
 set -ueo pipefail
 shopt -s dotglob extglob nullglob
@@ -399,7 +399,7 @@ bdc_self_upgrade() {
 bdc_main() {
   xdg_discover_config
   bdc_discover
-  d_core=$d_modules/discord_desktop_core-1/discord_desktop_core
+  d_core=$d_modules/discord_desktop_core-2/discord_desktop_core
   [[ -d $d_core ]] || die "ERROR: Directory 'discord_desktop_core' not found in: $d_modules"
   bd_remote_init
   bd_asar=$bd_config/data/$bd_asar_name
